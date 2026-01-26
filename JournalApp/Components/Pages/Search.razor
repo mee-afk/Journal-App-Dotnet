@@ -1,12 +1,26 @@
 ﻿
+@* @page "/search" *@
+
+@* <PageTitle>Search - My Journal</PageTitle> *@
+
+@* <div class="container"> *@
+@*     <h3>Search & Filter</h3> *@
+@*     <p class="text-muted">Search functionality will be implemented here</p> *@
+@*     <div class="alert alert-info"> *@
+@*         <strong>Coming Soon!</strong> This feature is under development. *@
+@*     </div> *@
+@* </div> *@
+
 @page "/search"
 
-<PageTitle>Search - My Journal</PageTitle>
+<AuthGuard>
+    <PageTitle>Search - My Journal</PageTitle>
 
-<div class="container">
-    <h3>Search & Filter</h3>
-    <p class="text-muted">Search functionality will be implemented here</p>
-    <div class="alert alert-info">
-        <strong>Coming Soon!</strong> This feature is under development.
+    <div class="container">
+        <h3>Search & Filter</h3>
+        <p class="text-muted">Search functionality will be implemented here</p>
+        <div class="alert alert-info">
+            <strong>Coming Soon!</strong> This feature is under development.
+        </div>
     </div>
-</div>
+</AuthGuard>

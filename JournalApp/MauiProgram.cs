@@ -33,11 +33,13 @@ namespace JournalApp
             builder.Services.AddDbContext<JournalDbContext>(options =>
                 options.UseSqlite($"Data Source={dbPath}"));
 
-            // Register Services
+            // Register Services in correct dependency order
+            // UserService must be registered first as others depend on it
+            builder.Services.AddScoped<UserService>();
             builder.Services.AddScoped<JournalService>();
+            builder.Services.AddScoped<ThemeService>();
             builder.Services.AddScoped<AuthenticationService>();
             builder.Services.AddScoped<ExportService>();
-            builder.Services.AddScoped<ThemeService>();
 
             // Build the app
             var app = builder.Build();

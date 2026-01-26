@@ -1,138 +1,198 @@
 ﻿@page "/dashboard"
 @inject JournalService JournalService
+@inject UserService UserService
 
 <PageTitle>Dashboard - My Journal</PageTitle>
 
-<div class="container">
-    <h3>Dashboard & Analytics</h3>
-
-    @if (isLoading)
-    {
-        <div class="text-center">
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">
-                    Loading...
-                </span>
-            </div>
-        </div>
-    }
-    else
-    {
-        <div class="row mt-4">
-            <!-- Stats Cards -->
-
-            <div class="col-md-3 mb-3">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Total Entries</h5>
-                        <h2 class="display-4">@totalEntries</h2>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-3 mb-3">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Current Streak</h5>
-                        <h2 class="display-4">@currentStreak</h2>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-3 mb-3">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Longest Streak</h5>
-                        <h2 class="display-4">@longestStreak</h2>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-3 mb-3">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Avg Words/Entry</h5>
-                        <h2 class="display-4">@avgWords</h2>
-                    </div>
-                </div>
-            </div>
+<AuthGuard>
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>Dashboard & Analytics</h3>
+            <span class="text-muted">@UserService.CurrentUser?.FullName</span>
         </div>
 
-        <!-- Mood Distribution -->
-        <div class="row mt-4">
-            <div class="col-md-6 mb-3">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Mood Distribution</h5>
+        @if (isLoading)
+        {
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="row mt-4">
+                <!-- Stats Cards -->
+                <div class="col-md-3 mb-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Total Entries</h5>
+                            <h2 class="display-4">@totalEntries</h2>
+                        </div>
+                    </div>
+                </div>
 
-                        @if (moodDistribution.Any())
-                        {
-                            @foreach (var mood in moodDistribution)
+                <div class="col-md-3 mb-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Current Streak</h5>
+                            <h2 class="display-4">@currentStreak</h2>
+                            <small class="text-muted">days</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Longest Streak</h5>
+                            <h2 class="display-4">@longestStreak</h2>
+                            <small class="text-muted">days</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Avg Words/Entry</h5>
+                            <h2 class="display-4">@avgWords</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mood Distribution -->
+            <div class="row mt-4">
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Mood Distribution</h5>
+                            @if (moodDistribution.Any())
                             {
-                                <div class="mb-2">
-                                    <strong>@mood.Key:</strong> @mood.Value entries
+                                @foreach (var mood in moodDistribution)
+                                {
+                                    var percentage = totalEntries > 0 ? (mood.Value * 100.0 / totalEntries) : 0;
+                                    var colorClass = mood.Key switch
+                                    {
+                                        "Positive" => "success",
+                                        "Neutral" => "secondary",
+                                        "Negative" => "danger",
+                                        _ => "primary"
+                                    };
+
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <strong>@mood.Key</strong>
+                                            <span>@mood.Value entries (@percentage.ToString("F1")%)</span>
+                                        </div>
+                                        <div class="progress">
+                                            <div class="progress-bar bg-@colorClass"
+                                                 role="progressbar"
+                                                 style="width: @percentage%"
+                                                 aria-valuenow="@percentage"
+                                                 aria-valuemin="0"
+                                                 aria-valuemax="100">
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <p class="text-muted">No mood data yet. Start journaling!</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Most Used Tags</h5>
+                            @if (topTags.Any())
+                            {
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var tag in topTags)
+                                    {
+                                        <span class="badge bg-primary fs-6">
+                                            @tag.Key <span class="badge bg-light text-dark">@tag.Value</span>
+                                        </span>
+                                    }
                                 </div>
                             }
-                        }
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6 mb-3">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Most Used Tags</h5>
-
-                        @if (topTags.Any())
-                        {
-                            @foreach (var tag in topTags)
+                            else
                             {
-                                <span class="badge bg-primary me-2 mb-2">
-                                    @tag.Key (@tag.Value)
-                                </span>
+                                <p class="text-muted">No tags used yet</p>
                             }
-                        }
-                        else
-                        {
-                            <p class="text-muted">No tags used yet</p>
-                        }
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    }
-</div>
 
-@code
-{
+            <!-- Most Frequent Mood -->
+            @if (!string.IsNullOrEmpty(mostFrequentMood))
+            {
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Your Most Frequent Mood</h5>
+                                <h2 class="display-5 text-primary">@mostFrequentMood</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</AuthGuard>
+
+@code {
     private bool isLoading = true;
-
     private int totalEntries = 0;
     private int currentStreak = 0;
     private int longestStreak = 0;
     private int avgWords = 0;
-
     private Dictionary<string, int> moodDistribution = new();
     private Dictionary<string, int> topTags = new();
+    private string? mostFrequentMood = null;
 
     protected override async Task OnInitializedAsync()
     {
+        if (!UserService.IsLoggedIn)
+        {
+            return;
+        }
+
         try
         {
+            // Get total entries
             totalEntries = await JournalService.GetTotalEntryCountAsync();
 
-            var settings = await JournalService.GetSettingsAsync();
-            currentStreak = settings.CurrentStreak;
-            longestStreak = settings.LongestStreak;
+            // Get user streak data from UserService
+            var currentUser = UserService.CurrentUser;
+            if (currentUser != null)
+            {
+                currentStreak = currentUser.CurrentStreak;
+                longestStreak = currentUser.LongestStreak;
+            }
 
+            // Calculate average words
             var allEntries = await JournalService.GetAllEntriesAsync();
             if (allEntries.Any())
             {
                 avgWords = (int)allEntries.Average(e => e.WordCount);
             }
 
+            // Get mood distribution
             moodDistribution = await JournalService.GetMoodDistributionAsync();
+
+            // Get most used tags
             topTags = await JournalService.GetMostUsedTagsAsync();
+
+            // Get most frequent mood
+            mostFrequentMood = await JournalService.GetMostFrequentMoodAsync();
         }
         catch (Exception ex)
         {

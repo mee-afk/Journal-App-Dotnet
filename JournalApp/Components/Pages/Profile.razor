@@ -1,0 +1,58 @@
+﻿@page "/profile"
+
+@inject UserService UserService
+@inject NavigationManager Navigation
+
+
+<AuthGuard>
+
+    <h3>My Profile</h3>
+
+    <div class="card">
+        <div class="card-body">
+            <p>
+                <strong>Username:</strong>
+                @UserService.CurrentUser?.Username
+            </p>
+
+            <p>
+                <strong>Full Name:</strong>
+                @UserService.CurrentUser?.FullName
+            </p>
+
+            <p>
+                <strong>Email:</strong>
+                @UserService.CurrentUser?.Email
+            </p>
+
+            <p>
+                <strong>Member Since:</strong>
+                @UserService.CurrentUser?.CreatedAt.ToString("MMMM dd, yyyy")
+            </p>
+
+            <p>
+                <strong>Current Streak:</strong>
+                @UserService.CurrentUser?.CurrentStreak days
+            </p>
+
+            <p>
+                <strong>Longest Streak:</strong>
+                @UserService.CurrentUser?.LongestStreak days
+            </p>
+        </div>
+    </div>
+
+    <button class="btn btn-danger mt-3"
+            @onclick="Logout">
+        Logout
+    </button>
+
+</AuthGuard>
+
+@code {
+    private void Logout()
+    {
+        UserService.Logout();
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+}

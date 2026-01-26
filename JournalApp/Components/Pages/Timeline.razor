@@ -1,66 +1,138 @@
 ﻿@page "/timeline"
 @inject JournalService JournalService
+@inject UserService UserService
+@inject NavigationManager Navigation
 
 <PageTitle>Timeline - My Journal</PageTitle>
 
-<div class="container">
-    <h3>Timeline</h3>
-
-    @if (isLoading)
-    {
-        <div class="text-center">
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
+<AuthGuard>
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>Timeline</h3>
+            <span class="text-muted">@UserService.CurrentUser?.FullName</span>
         </div>
-    }
-    else if (entries.Any())
-    {
-        <div class="timeline-container">
-            @foreach (var entry in entries)
-            {
-                <div class="timeline-entry card mb-3">
-                    <div class="card-body">
-                        <h5 class="card-title">
-                            @entry.EntryDate.ToString("MMMM dd, yyyy")
-                        </h5>
 
-                        <h6 class="card-subtitle mb-2 text-muted">
-                            Mood: @entry.PrimaryMood (@entry.MoodCategory)
-                        </h6>
+        @if (isLoading)
+        {
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else if (entries.Any())
+        {
+            <div class="timeline-container">
+                @foreach (var entry in entries)
+                {
+                    <div class="timeline-entry card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h5 class="card-title">@entry.EntryDate.ToString("dddd, MMMM dd, yyyy")</h5>
+                                    <h6 class="card-subtitle mb-2">
+                                        <span class="badge bg-@GetMoodBadgeClass(entry.MoodCategory)">
+                                            @entry.PrimaryMood
+                                        </span>
+                                        @if (!string.IsNullOrEmpty(entry.Category))
+                                        {
+                                            <span class="badge bg-secondary ms-2">@entry.Category</span>
+                                        }
+                                    </h6>
+                                </div>
+                                <small class="text-muted">@entry.WordCount words</small>
+                            </div>
 
-                        <p class="card-text">
-                            @GetPreview(entry.Content)
-                        </p>
+                            <p class="card-text mt-3">@GetPreview(entry.Content)</p>
 
-                        <a href="@($"/journal?date={entry.EntryDate:yyyy-MM-dd}")"
-                           class="btn btn-sm btn-primary">
-                            View Full Entry
-                        </a>
+                            @if (!string.IsNullOrEmpty(entry.Tags))
+                            {
+                                <div class="mt-2">
+                                    @foreach (var tag in entry.TagList)
+                                    {
+                                        <span class="badge bg-light text-dark me-1">@tag</span>
+                                    }
+                                </div>
+                            }
+
+                            <button class="btn btn-sm btn-primary mt-3" @onclick="() => ViewEntry(entry.EntryDate)">
+                                View Full Entry
+                            </button>
+                        </div>
                     </div>
+                }
+            </div>
+
+            @if (totalCount > pageSize)
+            {
+                <div class="d-flex justify-content-center mt-4">
+                    <nav>
+                        <ul class="pagination">
+                            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                <button class="page-link" @onclick="PreviousPage" disabled="@(currentPage == 1)">
+                                    Previous
+                                </button>
+                            </li>
+
+                            @for (int i = 1; i <= totalPages; i++)
+                            {
+                                var pageNum = i;
+                                <li class="page-item @(currentPage == pageNum ? "active" : "")">
+                                    <button class="page-link" @onclick="() => GoToPage(pageNum)">
+                                        @pageNum
+                                    </button>
+                                </li>
+                            }
+
+                            <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                <button class="page-link" @onclick="NextPage" disabled="@(currentPage == totalPages)">
+                                    Next
+                                </button>
+                            </li>
+                        </ul>
+                    </nav>
                 </div>
             }
-        </div>
-    }
-    else
-    {
-        <div class="alert alert-info">
-            <strong>No entries yet!</strong>
-            Start journaling to see your timeline.
-        </div>
-    }
-</div>
+        }
+        else
+        {
+            <div class="alert alert-info text-center">
+                <h4>No entries yet!</h4>
+                <p>Start your journaling journey today.</p>
+                <button class="btn btn-primary" @onclick="GoToJournal">
+                    Create Your First Entry
+                </button>
+            </div>
+        }
+    </div>
+</AuthGuard>
 
-@code
-{
+@code {
     private List<JournalEntry> entries = new();
     private bool isLoading = true;
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalCount = 0;
+    private int totalPages => (int)Math.Ceiling(totalCount / (double)pageSize);
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadEntries();
+    }
+
+    private async Task LoadEntries()
+    {
+        if (!UserService.IsLoggedIn)
+        {
+            return;
+        }
+
         try
         {
-            entries = await JournalService.GetAllEntriesAsync();
+            isLoading = true;
+            var result = await JournalService.GetPaginatedEntriesAsync(currentPage, pageSize);
+            entries = result.Entries;
+            totalCount = result.TotalCount;
         }
         catch (Exception ex)
         {
@@ -74,15 +146,56 @@
 
     private string GetPreview(string content)
     {
-        // Strip HTML and get first 150 characters
-        var text = System.Text.RegularExpressions.Regex.Replace(
-            content,
-            "<.*?>",
-            string.Empty
-        );
+        // Strip HTML and get first 200 characters
+        var text = System.Text.RegularExpressions.Regex.Replace(content, "<.*?>", string.Empty);
+        text = System.Net.WebUtility.HtmlDecode(text);
+        return text.Length > 200 ? text.Substring(0, 200) + "..." : text;
+    }
 
-        return text.Length > 150
-            ? text.Substring(0, 150) + "..."
-            : text;
+    private string GetMoodBadgeClass(string moodCategory)
+    {
+        return moodCategory switch
+        {
+            "Positive" => "success",
+            "Negative" => "danger",
+            _ => "secondary"
+        };
+    }
+
+    private void ViewEntry(DateTime date)
+    {
+        Navigation.NavigateTo($"/journal?date={date:yyyy-MM-dd}");
+    }
+
+    private void GoToJournal()
+    {
+        Navigation.NavigateTo("/journal");
+    }
+
+    private async Task PreviousPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            await LoadEntries();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (currentPage < totalPages)
+        {
+            currentPage++;
+            await LoadEntries();
+        }
+    }
+
+    private async Task GoToPage(int page)
+    {
+        if (page != currentPage && page >= 1 && page <= totalPages)
+        {
+            currentPage = page;
+            await LoadEntries();
+        }
     }
 }

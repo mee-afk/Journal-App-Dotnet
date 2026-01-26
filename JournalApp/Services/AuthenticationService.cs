@@ -1,113 +1,138 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 using JournalApp.Data;
+using JournalApp.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace JournalApp.Services
 {
     /// <summary>
-    /// Service for handling authentication and PIN protection
+    /// Service for handling user authentication and PIN protection (Multi-User)
     /// </summary>
     public class AuthenticationService
     {
         private readonly JournalDbContext _context;
-        private bool _isAuthenticated = false;
+        private readonly UserService _userService;
 
-        public bool IsAuthenticated => _isAuthenticated;
-
-        public AuthenticationService(JournalDbContext context)
+        public AuthenticationService(JournalDbContext context, UserService userService)
         {
             _context = context;
+            _userService = userService;
         }
 
         /// <summary>
-        /// Checks if a PIN is set
+        /// Checks if current user has a PIN set
         /// </summary>
         public async Task<bool> IsPinSetAsync()
         {
-            var settings = await _context.AppSettings.FirstOrDefaultAsync();
-            return settings != null && !string.IsNullOrEmpty(settings.HashedPin);
+            var currentUser = _userService.CurrentUser;
+            if (currentUser == null) return false;
+
+            var user = await _context.Users.FindAsync(currentUser.Id);
+            return user != null && !string.IsNullOrEmpty(user.PinHash);
         }
 
         /// <summary>
-        /// Sets up a new PIN
+        /// Sets up a new PIN for current user
         /// </summary>
         public async Task<bool> SetPinAsync(string pin)
         {
-            if (string.IsNullOrWhiteSpace(pin) || pin.Length < 4)
+            var currentUser = _userService.CurrentUser;
+            if (currentUser == null) return false;
+
+            if (string.IsNullOrWhiteSpace(pin) || pin.Length != 4 || !pin.All(char.IsDigit))
                 return false;
 
-            var settings = await _context.AppSettings.FirstOrDefaultAsync();
-            if (settings == null)
-            {
-                settings = new Models.AppSettings();
-                _context.AppSettings.Add(settings);
-            }
+            var user = await _context.Users.FindAsync(currentUser.Id);
+            if (user == null) return false;
 
-            settings.HashedPin = HashPin(pin);
+            user.PinHash = HashPin(pin);
+            _context.Users.Update(user);
             await _context.SaveChangesAsync();
-            _isAuthenticated = true;
+
+            // Update current user in UserService
+            _userService.RefreshCurrentUser(user);
+
             return true;
         }
 
         /// <summary>
-        /// Validates a PIN
+        /// Validates a PIN for current user
         /// </summary>
         public async Task<bool> ValidatePinAsync(string pin)
         {
-            var settings = await _context.AppSettings.FirstOrDefaultAsync();
-            if (settings == null || string.IsNullOrEmpty(settings.HashedPin))
+            var currentUser = _userService.CurrentUser;
+            if (currentUser == null) return false;
+
+            var user = await _context.Users.FindAsync(currentUser.Id);
+            if (user == null || string.IsNullOrEmpty(user.PinHash))
                 return false;
 
             var hashedInput = HashPin(pin);
-            _isAuthenticated = hashedInput == settings.HashedPin;
-            return _isAuthenticated;
+            return hashedInput == user.PinHash;
         }
 
         /// <summary>
-        /// Changes the PIN
+        /// Changes the PIN for current user
         /// </summary>
         public async Task<bool> ChangePinAsync(string oldPin, string newPin)
         {
             if (!await ValidatePinAsync(oldPin))
                 return false;
 
-            if (string.IsNullOrWhiteSpace(newPin) || newPin.Length < 4)
+            if (string.IsNullOrWhiteSpace(newPin) || newPin.Length != 4 || !newPin.All(char.IsDigit))
                 return false;
 
-            var settings = await _context.AppSettings.FirstOrDefaultAsync();
-            if (settings == null)
-                return false;
-
-            settings.HashedPin = HashPin(newPin);
-            await _context.SaveChangesAsync();
-            return true;
+            return await SetPinAsync(newPin);
         }
 
         /// <summary>
-        /// Removes the PIN protection
+        /// Removes the PIN protection for current user
         /// </summary>
         public async Task<bool> RemovePinAsync(string currentPin)
         {
-            if (!await ValidatePinAsync(currentPin))
-                return false;
+            var currentUser = _userService.CurrentUser;
+            if (currentUser == null) return false;
 
-            var settings = await _context.AppSettings.FirstOrDefaultAsync();
-            if (settings == null)
-                return false;
+            // If PIN exists, verify it first
+            if (await IsPinSetAsync())
+            {
+                if (!await ValidatePinAsync(currentPin))
+                    return false;
+            }
 
-            settings.HashedPin = null;
+            var user = await _context.Users.FindAsync(currentUser.Id);
+            if (user == null) return false;
+
+            user.PinHash = null;
+            _context.Users.Update(user);
             await _context.SaveChangesAsync();
-            _isAuthenticated = true; // Keep authenticated after removal
+
+            // Update current user in UserService
+            _userService.RefreshCurrentUser(user);
+
             return true;
         }
 
         /// <summary>
-        /// Logs out the user
+        /// Attempts to login using PIN (for quick login)
         /// </summary>
-        public void Logout()
+        public async Task<bool> LoginWithPinAsync(string username, string pin)
         {
-            _isAuthenticated = false;
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            if (user == null || string.IsNullOrEmpty(user.PinHash))
+                return false;
+
+            var hashedInput = HashPin(pin);
+            if (hashedInput == user.PinHash)
+            {
+                _userService.SetCurrentUser(user);
+                user.LastLoginAt = DateTime.Now;
+                await _context.SaveChangesAsync();
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>

@@ -7,6 +7,51 @@ using System.Linq;
 namespace JournalApp.Models
 {
     /// <summary>
+    /// Represents a user account in the system
+    /// </summary>
+    public class User
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [MaxLength(100)]
+        public string Username { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(100)]
+        public string FullName { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(256)]
+        public string PasswordHash { get; set; } = string.Empty;
+
+        [MaxLength(256)]
+        public string? PinHash { get; set; }
+
+        [MaxLength(200)]
+        public string? Email { get; set; }
+
+        [Required]
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        public DateTime? LastLoginAt { get; set; }
+
+        [Required]
+        public bool IsActive { get; set; } = true;
+
+        [MaxLength(20)]
+        public string Theme { get; set; } = "Light";
+
+        public int CurrentStreak { get; set; }
+        public int LongestStreak { get; set; }
+        public DateTime? LastEntryDate { get; set; }
+
+        // Navigation property
+        public virtual ICollection<JournalEntry> JournalEntries { get; set; } = new List<JournalEntry>();
+    }
+
+    /// <summary>
     /// Represents a single journal entry for a specific date
     /// </summary>
     public class JournalEntry
@@ -15,7 +60,13 @@ namespace JournalApp.Models
         public int Id { get; set; }
 
         /// <summary>
-        /// Date of the journal entry (one per day)
+        /// Foreign key to User
+        /// </summary>
+        [Required]
+        public int UserId { get; set; }
+
+        /// <summary>
+        /// Date of the journal entry (one per user per day)
         /// </summary>
         [Required]
         public DateTime EntryDate { get; set; }
@@ -89,7 +140,11 @@ namespace JournalApp.Models
         /// </summary>
         public bool IsMarkdown { get; set; }
 
-        // Navigation property for tags (helper property, not stored)
+        // Navigation property
+        [ForeignKey("UserId")]
+        public virtual User User { get; set; } = null!;
+
+        // Helper property for tags (not stored)
         [NotMapped]
         public List<string> TagList
         {
@@ -103,45 +158,16 @@ namespace JournalApp.Models
     }
 
     /// <summary>
-    /// App settings including PIN and preferences
+    /// Global app settings (not user-specific)
     /// </summary>
     public class AppSettings
     {
         [Key]
         public int Id { get; set; }
 
-        /// <summary>
-        /// Hashed PIN for security
-        /// </summary>
-        [MaxLength(256)]
-        public string? HashedPin { get; set; }
+        public int? LastLoggedInUserId { get; set; }
 
-        /// <summary>
-        /// Theme preference (Light/Dark)
-        /// </summary>
-        [Required]
-        [MaxLength(20)]
-        public string Theme { get; set; } = "Light";
-
-        /// <summary>
-        /// Last accessed date (for streak calculation)
-        /// </summary>
-        public DateTime? LastAccessDate { get; set; }
-
-        /// <summary>
-        /// Current streak count
-        /// </summary>
-        public int CurrentStreak { get; set; }
-
-        /// <summary>
-        /// Longest streak achieved
-        /// </summary>
-        public int LongestStreak { get; set; }
-
-        /// <summary>
-        /// Date of last entry
-        /// </summary>
-        public DateTime? LastEntryDate { get; set; }
+        public bool RememberLastUser { get; set; } = true;
     }
 
     /// <summary>

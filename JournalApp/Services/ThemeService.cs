@@ -4,34 +4,35 @@ using Microsoft.EntityFrameworkCore;
 namespace JournalApp.Services
 {
     /// <summary>
-    /// Service for managing application theme
+    /// Service for managing application theme (per-user)
     /// </summary>
     public class ThemeService
     {
         private readonly JournalDbContext _context;
+        private readonly UserService _userService;
         private string _currentTheme = "Light";
 
         public event EventHandler<string>? ThemeChanged;
 
         public string CurrentTheme => _currentTheme;
 
-        public ThemeService(JournalDbContext context)
+        public ThemeService(JournalDbContext context, UserService userService)
         {
             _context = context;
-            _ = LoadThemeAsync();
+            _userService = userService;
+            LoadTheme();
         }
 
         /// <summary>
-        /// Loads the saved theme from database
+        /// Loads the saved theme for current user
         /// </summary>
-        private async Task LoadThemeAsync()
+        private void LoadTheme()
         {
             try
             {
-                var settings = await _context.AppSettings.FirstOrDefaultAsync();
-                if (settings != null)
+                if (_userService.CurrentUser != null)
                 {
-                    _currentTheme = settings.Theme ?? "Light";
+                    _currentTheme = _userService.CurrentUser.Theme ?? "Light";
                 }
             }
             catch
@@ -72,24 +73,39 @@ namespace JournalApp.Services
         }
 
         /// <summary>
-        /// Saves the current theme to database
+        /// Saves the current theme to database for current user
         /// </summary>
         private async Task SaveThemeAsync()
         {
             try
             {
-                var settings = await _context.AppSettings.FirstOrDefaultAsync();
-                if (settings != null)
+                if (_userService.CurrentUser != null)
                 {
-                    settings.Theme = _currentTheme;
-                    _context.AppSettings.Update(settings);
-                    await _context.SaveChangesAsync();
+                    var user = await _context.Users.FindAsync(_userService.CurrentUser.Id);
+                    if (user != null)
+                    {
+                        user.Theme = _currentTheme;
+                        _context.Users.Update(user);
+                        await _context.SaveChangesAsync();
+
+                        // Update current user in UserService
+                        _userService.CurrentUser.Theme = _currentTheme;
+                    }
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to save theme: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Refreshes theme from current user
+        /// </summary>
+        public void RefreshTheme()
+        {
+            LoadTheme();
+            ThemeChanged?.Invoke(this, _currentTheme);
         }
     }
 }

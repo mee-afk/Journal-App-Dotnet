@@ -1,58 +1,75 @@
-﻿using Microsoft.EntityFrameworkCore;
-using   JournalApp.Data;
+﻿using JournalApp.Services;
+using Microsoft.EntityFrameworkCore;
+using JournalApp.Data;
 using JournalApp.Models;
 
 namespace JournalApp.Services
 {
     /// <summary>
-    /// Service for managing journal entries using EF Core
+    /// Service for managing journal entries (multi-user)
     /// </summary>
     public class JournalService
     {
         private readonly JournalDbContext _context;
+        private readonly UserService _userService;
 
-        public JournalService(JournalDbContext context)
+        public JournalService(JournalDbContext context, UserService userService)
         {
             _context = context;
+            _userService = userService;
         }
+
+        private int CurrentUserId => _userService.CurrentUser?.Id ?? 0;
 
         #region CRUD Operations
 
         /// <summary>
-        /// Gets the journal entry for a specific date
+        /// Gets the journal entry for a specific date for current user
         /// </summary>
         public async Task<JournalEntry?> GetEntryByDateAsync(DateTime date)
         {
+            if (CurrentUserId == 0) return null;
+
             var dateOnly = date.Date;
             return await _context.JournalEntries
-                .FirstOrDefaultAsync(e => e.EntryDate.Date == dateOnly);
+                .FirstOrDefaultAsync(e => e.UserId == CurrentUserId && e.EntryDate.Date == dateOnly);
         }
 
         /// <summary>
-        /// Gets a journal entry by ID
+        /// Gets a journal entry by ID (only if belongs to current user)
         /// </summary>
         public async Task<JournalEntry?> GetEntryByIdAsync(int id)
         {
-            return await _context.JournalEntries.FindAsync(id);
+            if (CurrentUserId == 0) return null;
+
+            return await _context.JournalEntries
+                .FirstOrDefaultAsync(e => e.Id == id && e.UserId == CurrentUserId);
         }
 
         /// <summary>
-        /// Gets all journal entries
+        /// Gets all journal entries for current user
         /// </summary>
         public async Task<List<JournalEntry>> GetAllEntriesAsync()
         {
+            if (CurrentUserId == 0) return new List<JournalEntry>();
+
             return await _context.JournalEntries
+                .Where(e => e.UserId == CurrentUserId)
                 .OrderByDescending(e => e.EntryDate)
                 .ToListAsync();
         }
 
         /// <summary>
-        /// Creates or updates a journal entry
+        /// Creates or updates a journal entry for current user
         /// </summary>
         public async Task<JournalEntry> SaveEntryAsync(JournalEntry entry)
         {
+            if (CurrentUserId == 0)
+                throw new InvalidOperationException("No user logged in");
+
             entry.UpdatedAt = DateTime.Now;
-            entry.EntryDate = entry.EntryDate.Date; // Normalize to date only
+            entry.EntryDate = entry.EntryDate.Date;
+            entry.UserId = CurrentUserId;
 
             var existing = await GetEntryByDateAsync(entry.EntryDate);
 
@@ -83,27 +100,30 @@ namespace JournalApp.Services
                 _context.JournalEntries.Add(entry);
                 await _context.SaveChangesAsync();
 
-                // Update streak
-                await UpdateStreakAsync();
+                // Update user streak
+                //await _userService.UpdateUserStreakAsync(CurrentUserId, entry.EntryDate);
+                await _userService.UpdateUserStreakAsync(_userService.CurrentUser);
+
 
                 return entry;
             }
         }
 
         /// <summary>
-        /// Deletes a journal entry
+        /// Deletes a journal entry (only if belongs to current user)
         /// </summary>
         public async Task<bool> DeleteEntryAsync(int id)
         {
-            var entry = await _context.JournalEntries.FindAsync(id);
+            if (CurrentUserId == 0) return false;
+
+            var entry = await _context.JournalEntries
+                .FirstOrDefaultAsync(e => e.Id == id && e.UserId == CurrentUserId);
+
             if (entry == null)
                 return false;
 
             _context.JournalEntries.Remove(entry);
             await _context.SaveChangesAsync();
-
-            // Recalculate streaks after deletion
-            await RecalculateStreaksAsync();
 
             return true;
         }
@@ -113,18 +133,22 @@ namespace JournalApp.Services
         #region Search & Filter
 
         /// <summary>
-        /// Gets entries by date range
+        /// Gets entries by date range for current user
         /// </summary>
         public async Task<List<JournalEntry>> GetEntriesByDateRangeAsync(DateTime startDate, DateTime endDate)
         {
+            if (CurrentUserId == 0) return new List<JournalEntry>();
+
             return await _context.JournalEntries
-                .Where(e => e.EntryDate.Date >= startDate.Date && e.EntryDate.Date <= endDate.Date)
+                .Where(e => e.UserId == CurrentUserId &&
+                           e.EntryDate.Date >= startDate.Date &&
+                           e.EntryDate.Date <= endDate.Date)
                 .OrderByDescending(e => e.EntryDate)
                 .ToListAsync();
         }
 
         /// <summary>
-        /// Complex search with multiple filters
+        /// Complex search with multiple filters for current user
         /// </summary>
         public async Task<List<JournalEntry>> SearchEntriesAsync(
             string? searchText = null,
@@ -134,25 +158,27 @@ namespace JournalApp.Services
             List<string>? tags = null,
             string? category = null)
         {
-            var query = _context.JournalEntries.AsQueryable();
+            if (CurrentUserId == 0) return new List<JournalEntry>();
 
-            // Filter by search text
+            var query = _context.JournalEntries
+                .Where(e => e.UserId == CurrentUserId)
+                .AsQueryable();
+
             if (!string.IsNullOrWhiteSpace(searchText))
             {
                 query = query.Where(e => e.Content.Contains(searchText));
             }
 
-            // Filter by date range
             if (startDate.HasValue)
             {
                 query = query.Where(e => e.EntryDate.Date >= startDate.Value.Date);
             }
+
             if (endDate.HasValue)
             {
                 query = query.Where(e => e.EntryDate.Date <= endDate.Value.Date);
             }
 
-            // Filter by moods
             if (moods != null && moods.Any())
             {
                 query = query.Where(e =>
@@ -161,13 +187,11 @@ namespace JournalApp.Services
                     (e.SecondaryMood2 != null && moods.Contains(e.SecondaryMood2)));
             }
 
-            // Filter by category
             if (!string.IsNullOrWhiteSpace(category))
             {
                 query = query.Where(e => e.Category == category);
             }
 
-            // Filter by tags
             if (tags != null && tags.Any())
             {
                 foreach (var tag in tags)
@@ -184,12 +208,16 @@ namespace JournalApp.Services
         #region Pagination
 
         /// <summary>
-        /// Gets paginated entries
+        /// Gets paginated entries for current user
         /// </summary>
         public async Task<(List<JournalEntry> Entries, int TotalCount)> GetPaginatedEntriesAsync(
             int pageNumber, int pageSize)
         {
-            var query = _context.JournalEntries.OrderByDescending(e => e.EntryDate);
+            if (CurrentUserId == 0) return (new List<JournalEntry>(), 0);
+
+            var query = _context.JournalEntries
+                .Where(e => e.UserId == CurrentUserId)
+                .OrderByDescending(e => e.EntryDate);
 
             var totalCount = await query.CountAsync();
             var entries = await query
@@ -202,140 +230,19 @@ namespace JournalApp.Services
 
         #endregion
 
-        #region Streak Tracking
-
-        /// <summary>
-        /// Updates the current streak after a new entry
-        /// </summary>
-        private async Task UpdateStreakAsync()
-        {
-            var settings = await GetSettingsAsync();
-            var today = DateTime.Today;
-
-            if (settings.LastEntryDate == null)
-            {
-                // First entry ever
-                settings.CurrentStreak = 1;
-                settings.LongestStreak = 1;
-            }
-            else
-            {
-                var daysSinceLastEntry = (today - settings.LastEntryDate.Value.Date).Days;
-
-                if (daysSinceLastEntry == 0)
-                {
-                    // Entry for today already exists (updating)
-                    // Don't change streak
-                }
-                else if (daysSinceLastEntry == 1)
-                {
-                    // Consecutive day
-                    settings.CurrentStreak++;
-                    if (settings.CurrentStreak > settings.LongestStreak)
-                    {
-                        settings.LongestStreak = settings.CurrentStreak;
-                    }
-                }
-                else
-                {
-                    // Streak broken
-                    settings.CurrentStreak = 1;
-                }
-            }
-
-            settings.LastEntryDate = today;
-            _context.AppSettings.Update(settings);
-            await _context.SaveChangesAsync();
-        }
-
-        /// <summary>
-        /// Recalculates streaks from scratch (used after deletion)
-        /// </summary>
-        private async Task RecalculateStreaksAsync()
-        {
-            var settings = await GetSettingsAsync();
-            var allEntries = await _context.JournalEntries
-                .OrderBy(e => e.EntryDate)
-                .Select(e => e.EntryDate.Date)
-                .ToListAsync();
-
-            if (!allEntries.Any())
-            {
-                settings.CurrentStreak = 0;
-                settings.LongestStreak = 0;
-                settings.LastEntryDate = null;
-            }
-            else
-            {
-                int currentStreak = 1;
-                int longestStreak = 1;
-
-                for (int i = 1; i < allEntries.Count; i++)
-                {
-                    var daysDiff = (allEntries[i] - allEntries[i - 1]).Days;
-                    if (daysDiff == 1)
-                    {
-                        currentStreak++;
-                        if (currentStreak > longestStreak)
-                            longestStreak = currentStreak;
-                    }
-                    else
-                    {
-                        currentStreak = 1;
-                    }
-                }
-
-                // Check if streak continues to today
-                var lastEntry = allEntries.Last();
-                var daysSinceLastEntry = (DateTime.Today - lastEntry).Days;
-
-                if (daysSinceLastEntry > 1)
-                {
-                    currentStreak = 0; // Streak broken
-                }
-
-                settings.CurrentStreak = currentStreak;
-                settings.LongestStreak = longestStreak;
-                settings.LastEntryDate = lastEntry;
-            }
-
-            _context.AppSettings.Update(settings);
-            await _context.SaveChangesAsync();
-        }
-
-        /// <summary>
-        /// Gets missed days in a date range
-        /// </summary>
-        public async Task<List<DateTime>> GetMissedDaysAsync(DateTime startDate, DateTime endDate)
-        {
-            var entries = await _context.JournalEntries
-                .Where(e => e.EntryDate.Date >= startDate.Date && e.EntryDate.Date <= endDate.Date)
-                .Select(e => e.EntryDate.Date)
-                .ToListAsync();
-
-            var missedDays = new List<DateTime>();
-            for (var date = startDate.Date; date <= endDate.Date; date = date.AddDays(1))
-            {
-                if (!entries.Contains(date))
-                {
-                    missedDays.Add(date);
-                }
-            }
-
-            return missedDays;
-        }
-
-        #endregion
-
         #region Analytics
 
         /// <summary>
-        /// Gets mood distribution statistics
+        /// Gets mood distribution for current user
         /// </summary>
         public async Task<Dictionary<string, int>> GetMoodDistributionAsync(
             DateTime? startDate = null, DateTime? endDate = null)
         {
-            var query = _context.JournalEntries.AsQueryable();
+            if (CurrentUserId == 0) return new Dictionary<string, int>();
+
+            var query = _context.JournalEntries
+                .Where(e => e.UserId == CurrentUserId)
+                .AsQueryable();
 
             if (startDate.HasValue)
                 query = query.Where(e => e.EntryDate.Date >= startDate.Value.Date);
@@ -361,12 +268,16 @@ namespace JournalApp.Services
         }
 
         /// <summary>
-        /// Gets the most frequent mood
+        /// Gets most frequent mood for current user
         /// </summary>
         public async Task<string?> GetMostFrequentMoodAsync(
             DateTime? startDate = null, DateTime? endDate = null)
         {
-            var query = _context.JournalEntries.AsQueryable();
+            if (CurrentUserId == 0) return null;
+
+            var query = _context.JournalEntries
+                .Where(e => e.UserId == CurrentUserId)
+                .AsQueryable();
 
             if (startDate.HasValue)
                 query = query.Where(e => e.EntryDate.Date >= startDate.Value.Date);
@@ -381,12 +292,16 @@ namespace JournalApp.Services
         }
 
         /// <summary>
-        /// Gets most used tags with counts
+        /// Gets most used tags for current user
         /// </summary>
         public async Task<Dictionary<string, int>> GetMostUsedTagsAsync(
             DateTime? startDate = null, DateTime? endDate = null, int topCount = 10)
         {
-            var query = _context.JournalEntries.AsQueryable();
+            if (CurrentUserId == 0) return new Dictionary<string, int>();
+
+            var query = _context.JournalEntries
+                .Where(e => e.UserId == CurrentUserId)
+                .AsQueryable();
 
             if (startDate.HasValue)
                 query = query.Where(e => e.EntryDate.Date >= startDate.Value.Date);
@@ -415,12 +330,16 @@ namespace JournalApp.Services
         }
 
         /// <summary>
-        /// Gets word count trends over time
+        /// Gets word count trends for current user
         /// </summary>
         public async Task<Dictionary<DateTime, double>> GetWordCountTrendsAsync(
             DateTime? startDate = null, DateTime? endDate = null)
         {
-            var query = _context.JournalEntries.AsQueryable();
+            if (CurrentUserId == 0) return new Dictionary<DateTime, double>();
+
+            var query = _context.JournalEntries
+                .Where(e => e.UserId == CurrentUserId)
+                .AsQueryable();
 
             if (startDate.HasValue)
                 query = query.Where(e => e.EntryDate.Date >= startDate.Value.Date);
@@ -436,39 +355,41 @@ namespace JournalApp.Services
         }
 
         /// <summary>
-        /// Gets total entry count
+        /// Gets total entry count for current user
         /// </summary>
         public async Task<int> GetTotalEntryCountAsync()
         {
-            return await _context.JournalEntries.CountAsync();
+            if (CurrentUserId == 0) return 0;
+
+            return await _context.JournalEntries
+                .Where(e => e.UserId == CurrentUserId)
+                .CountAsync();
         }
 
-        #endregion
-
-        #region Settings
-
         /// <summary>
-        /// Gets app settings
+        /// Gets missed days for current user
         /// </summary>
-        public async Task<AppSettings> GetSettingsAsync()
+        public async Task<List<DateTime>> GetMissedDaysAsync(DateTime startDate, DateTime endDate)
         {
-            var settings = await _context.AppSettings.FirstOrDefaultAsync();
-            if (settings == null)
+            if (CurrentUserId == 0) return new List<DateTime>();
+
+            var entries = await _context.JournalEntries
+                .Where(e => e.UserId == CurrentUserId &&
+                           e.EntryDate.Date >= startDate.Date &&
+                           e.EntryDate.Date <= endDate.Date)
+                .Select(e => e.EntryDate.Date)
+                .ToListAsync();
+
+            var missedDays = new List<DateTime>();
+            for (var date = startDate.Date; date <= endDate.Date; date = date.AddDays(1))
             {
-                settings = new AppSettings();
-                _context.AppSettings.Add(settings);
-                await _context.SaveChangesAsync();
+                if (!entries.Contains(date))
+                {
+                    missedDays.Add(date);
+                }
             }
-            return settings;
-        }
 
-        /// <summary>
-        /// Updates app settings
-        /// </summary>
-        public async Task UpdateSettingsAsync(AppSettings settings)
-        {
-            _context.AppSettings.Update(settings);
-            await _context.SaveChangesAsync();
+            return missedDays;
         }
 
         #endregion

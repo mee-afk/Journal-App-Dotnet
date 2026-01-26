@@ -1,185 +1,190 @@
-﻿@page "/"
-@page "/journal"
+﻿@page "/journal"
 @inject IJSRuntime JS
 @inject JournalService JournalService
+@inject UserService UserService
 @using JournalApp.Services
 @using JournalApp.Models
 
-<h3>Today's Journal</h3>
+<AuthGuard>
+    <PageTitle>Journal - My Journal</PageTitle>
 
-@if (isLoading)
-{
-    <div class="text-center">
-        <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-    </div>
-}
-else
-{
-    <div class="journal-container">
-        <div class="journal-header">
-            <div class="date-display">
-                <h4>@currentDate.ToString("dddd, MMMM dd, yyyy")</h4>
-                @if (currentEntry != null)
-                {
-                    <small class="text-muted">
-                        Last updated: @currentEntry.UpdatedAt.ToString("h:mm tt")
-                    </small>
-                }
+    <h3>Today's Journal</h3>
+    <p class="text-muted">Welcome, @UserService.CurrentUser?.FullName!</p>
+
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
             </div>
-
-            <div class="journal-actions">
-                <button class="btn btn-outline-primary" @onclick="ToggleFormatting">
-                    @(useMarkdown ? "Switch to Rich Text" : "Switch to Markdown")
-                </button>
-                <button class="btn btn-success" @onclick="SaveEntry" disabled="@isSaving">
-                    @if (isSaving)
+        </div>
+    }
+    else
+    {
+        <div class="journal-container">
+            <div class="journal-header">
+                <div class="date-display">
+                    <h4>@currentDate.ToString("dddd, MMMM dd, yyyy")</h4>
+                    @if (currentEntry != null)
                     {
-                        <span class="spinner-border spinner-border-sm me-2"></span>
+                        <small class="text-muted">
+                            Last updated: @currentEntry.UpdatedAt.ToString("h:mm tt")
+                        </small>
                     }
-                    Save Entry
-                </button>
-                @if (currentEntry != null)
-                {
-                    <button class="btn btn-outline-danger" @onclick="DeleteEntry">
-                        Delete
+                </div>
+
+                <div class="journal-actions">
+                    <button class="btn btn-outline-primary" @onclick="ToggleFormatting">
+                        @(useMarkdown ? "Switch to Rich Text" : "Switch to Markdown")
                     </button>
-                }
-            </div>
-        </div>
-
-        <!-- Mood Selection -->
-        <div class="mood-section mb-4">
-            <h5>How are you feeling today?</h5>
-
-            <div class="mood-categories">
-                <!-- Primary Mood -->
-                <div class="mood-category">
-                    <label class="form-label">Primary Mood (Required) <span class="text-danger">*</span></label>
-                    <select class="form-select" @bind="primaryMood">
-                        <option value="">Select a mood...</option>
-                        @foreach (var category in moodCategories)
+                    <button class="btn btn-success" @onclick="SaveEntry" disabled="@isSaving">
+                        @if (isSaving)
                         {
-                            <optgroup label="@category.Key">
-                                @foreach (var mood in category.Value)
-                                {
-                                    <option value="@mood">@mood</option>
-                                }
-                            </optgroup>
+                            <span class="spinner-border spinner-border-sm me-2"></span>
                         }
+                        Save Entry
+                    </button>
+                    @if (currentEntry != null)
+                    {
+                        <button class="btn btn-outline-danger" @onclick="DeleteEntry">
+                            Delete
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <!-- Mood Selection -->
+            <div class="mood-section mb-4">
+                <h5>How are you feeling today?</h5>
+
+                <div class="mood-categories">
+                    <!-- Primary Mood -->
+                    <div class="mood-category">
+                        <label class="form-label">Primary Mood (Required) <span class="text-danger">*</span></label>
+                        <select class="form-select" @bind="primaryMood">
+                            <option value="">Select a mood...</option>
+                            @foreach (var category in moodCategories)
+                            {
+                                <optgroup label="@category.Key">
+                                    @foreach (var mood in category.Value)
+                                    {
+                                        <option value="@mood">@mood</option>
+                                    }
+                                </optgroup>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Secondary Moods -->
+                    <div class="mood-category">
+                        <label class="form-label">Secondary Moods (Optional, up to 2)</label>
+                        <div class="secondary-moods">
+                            @for (int i = 0; i < secondaryMoods.Count; i++)
+                            {
+                                var index = i;
+                                <div class="secondary-mood-item">
+                                    <select class="form-select" @bind="secondaryMoods[index]">
+                                        <option value="">Select secondary mood...</option>
+                                        @foreach (var category in moodCategories)
+                                        {
+                                            <optgroup label="@category.Key">
+                                                @foreach (var mood in category.Value)
+                                                {
+                                                    <option value="@mood">@mood</option>
+                                                }
+                                            </optgroup>
+                                        }
+                                    </select>
+                                    @if (index > 0)
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveSecondaryMood(index)">
+                                            <span class="oi oi-trash"></span>
+                                        </button>
+                                    }
+                                </div>
+                            }
+                            @if (secondaryMoods.Count < 2)
+                            {
+                                <button class="btn btn-outline-secondary btn-sm" @onclick="AddSecondaryMood">
+                                    + Add Secondary Mood
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Category and Tags -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <label class="form-label">Category</label>
+                    <select class="form-select" @bind="selectedCategory">
+                        <option value="">Select category...</option>
+                        <option value="Personal">Personal</option>
+                        <option value="Work">Work</option>
+                        <option value="Health">Health</option>
+                        <option value="Travel">Travel</option>
+                        <option value="Reflection">Reflection</option>
                     </select>
                 </div>
 
-                <!-- Secondary Moods -->
-                <div class="mood-category">
-                    <label class="form-label">Secondary Moods (Optional, up to 2)</label>
-                    <div class="secondary-moods">
-                        @for (int i = 0; i < secondaryMoods.Count; i++)
+                <div class="col-md-6">
+                    <label class="form-label">Tags</label>
+                    <div class="tags-input">
+                        <input type="text" class="form-control" placeholder="Add tags..."
+                               @bind="newTag" @bind:event="oninput" @onkeyup="HandleTagInput" />
+                        @if (showTagSuggestions && filteredTags.Any())
                         {
-                            var index = i;
-                            <div class="secondary-mood-item">
-                                <select class="form-select" @bind="secondaryMoods[index]">
-                                    <option value="">Select secondary mood...</option>
-                                    @foreach (var category in moodCategories)
-                                    {
-                                        <optgroup label="@category.Key">
-                                            @foreach (var mood in category.Value)
-                                            {
-                                                <option value="@mood">@mood</option>
-                                            }
-                                        </optgroup>
-                                    }
-                                </select>
-                                @if (index > 0)
+                            <div class="tag-suggestions">
+                                @foreach (var tag in filteredTags)
                                 {
-                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveSecondaryMood(index)">
-                                        <span class="oi oi-trash"></span>
-                                    </button>
+                                    <div class="tag-suggestion" @onclick="() => AddTag(tag)">
+                                        @tag
+                                    </div>
                                 }
                             </div>
                         }
-                        @if (secondaryMoods.Count < 2)
+                    </div>
+
+                    <div class="selected-tags mt-2">
+                        @foreach (var tag in selectedTags)
                         {
-                            <button class="btn btn-outline-secondary btn-sm" @onclick="AddSecondaryMood">
-                                + Add Secondary Mood
-                            </button>
+                            <span class="selected-tag">
+                                @tag
+                                <button class="tag-remove" @onclick="() => RemoveTag(tag)">×</button>
+                            </span>
                         }
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Category and Tags -->
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <label class="form-label">Category</label>
-                <select class="form-select" @bind="selectedCategory">
-                    <option value="">Select category...</option>
-                    <option value="Personal">Personal</option>
-                    <option value="Work">Work</option>
-                    <option value="Health">Health</option>
-                    <option value="Travel">Travel</option>
-                    <option value="Reflection">Reflection</option>
-                </select>
-            </div>
-
-            <div class="col-md-6">
-                <label class="form-label">Tags</label>
-                <div class="tags-input">
-                    <input type="text" class="form-control" placeholder="Add tags..."
-                           @bind="newTag" @bind:event="oninput" @onkeyup="HandleTagInput" />
-                    @if (showTagSuggestions && filteredTags.Any())
-                    {
-                        <div class="tag-suggestions">
-                            @foreach (var tag in filteredTags)
-                            {
-                                <div class="tag-suggestion" @onclick="() => AddTag(tag)">
-                                    @tag
-                                </div>
-                            }
-                        </div>
-                    }
-                </div>
-
-                <div class="selected-tags mt-2">
-                    @foreach (var tag in selectedTags)
-                    {
-                        <span class="selected-tag">
-                            @tag
-                            <button class="tag-remove" @onclick="() => RemoveTag(tag)">×</button>
-                        </span>
-                    }
+            <!-- Editor Section -->
+            <div class="editor-section">
+                <div class="rich-text-editor">
+                    <div id="quillEditor" style="height: 300px;"></div>
                 </div>
             </div>
-        </div>
 
-        <!-- Editor Section -->
-        <div class="editor-section">
-            <div class="rich-text-editor">
-                <div id="quillEditor" style="height: 300px;"></div>
+            <div class="word-count mt-3">
+                Word Count: <span class="badge bg-secondary">@wordCount</span>
             </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger mt-3" role="alert">
+                    @errorMessage
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="alert alert-success mt-3" role="alert">
+                    @successMessage
+                </div>
+            }
         </div>
-
-        <div class="word-count mt-3">
-            Word Count: <span class="badge bg-secondary">@wordCount</span>
-        </div>
-
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="alert alert-danger mt-3" role="alert">
-                @errorMessage
-            </div>
-        }
-
-        @if (!string.IsNullOrEmpty(successMessage))
-        {
-            <div class="alert alert-success mt-3" role="alert">
-                @successMessage
-            </div>
-        }
-    </div>
-}
+    }
+</AuthGuard>
 
 @code {
     private DateTime currentDate = DateTime.Today;
