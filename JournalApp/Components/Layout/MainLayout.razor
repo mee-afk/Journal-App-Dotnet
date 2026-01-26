@@ -1,0 +1,60 @@
+﻿@inherits LayoutComponentBase
+@inject ThemeService ThemeService
+@inject NavigationManager Navigation
+
+<div class="page" data-theme="@currentTheme">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            <button class="theme-toggle" @onclick="ToggleTheme" title="Toggle Theme">
+                <span class="oi @(isDarkTheme ? "oi-sun" : "oi-moon")"></span>
+            </button>
+            <button class="lock-icon" @onclick="ShowLockScreen" title="Lock App">
+                <span class="oi oi-lock-locked"></span>
+            </button>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code {
+    private bool isDarkTheme = false;
+    private string currentTheme = "light";
+
+    protected override void OnInitialized()
+    {
+        currentTheme = ThemeService.CurrentTheme.ToLower();
+        isDarkTheme = currentTheme == "dark";
+
+        ThemeService.ThemeChanged += OnThemeChanged;
+    }
+
+    private async Task ToggleTheme()
+    {
+        await ThemeService.ToggleThemeAsync();
+    }
+
+    private void OnThemeChanged(object? sender, string newTheme)
+    {
+        currentTheme = newTheme.ToLower();
+        isDarkTheme = currentTheme == "dark";
+        StateHasChanged();
+    }
+
+    private void ShowLockScreen()
+    {
+        // Navigate to lock screen (to be implemented)
+        Navigation.NavigateTo("/lock");
+    }
+
+    public void Dispose()
+    {
+        ThemeService.ThemeChanged -= OnThemeChanged;
+    }
+}

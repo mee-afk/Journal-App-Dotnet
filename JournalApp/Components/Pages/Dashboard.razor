@@ -1,0 +1,146 @@
+﻿@page "/dashboard"
+@inject JournalService JournalService
+
+<PageTitle>Dashboard - My Journal</PageTitle>
+
+<div class="container">
+    <h3>Dashboard & Analytics</h3>
+
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">
+                    Loading...
+                </span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row mt-4">
+            <!-- Stats Cards -->
+
+            <div class="col-md-3 mb-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Total Entries</h5>
+                        <h2 class="display-4">@totalEntries</h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 mb-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Current Streak</h5>
+                        <h2 class="display-4">@currentStreak</h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 mb-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Longest Streak</h5>
+                        <h2 class="display-4">@longestStreak</h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 mb-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Avg Words/Entry</h5>
+                        <h2 class="display-4">@avgWords</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mood Distribution -->
+        <div class="row mt-4">
+            <div class="col-md-6 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Mood Distribution</h5>
+
+                        @if (moodDistribution.Any())
+                        {
+                            @foreach (var mood in moodDistribution)
+                            {
+                                <div class="mb-2">
+                                    <strong>@mood.Key:</strong> @mood.Value entries
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Most Used Tags</h5>
+
+                        @if (topTags.Any())
+                        {
+                            @foreach (var tag in topTags)
+                            {
+                                <span class="badge bg-primary me-2 mb-2">
+                                    @tag.Key (@tag.Value)
+                                </span>
+                            }
+                        }
+                        else
+                        {
+                            <p class="text-muted">No tags used yet</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code
+{
+    private bool isLoading = true;
+
+    private int totalEntries = 0;
+    private int currentStreak = 0;
+    private int longestStreak = 0;
+    private int avgWords = 0;
+
+    private Dictionary<string, int> moodDistribution = new();
+    private Dictionary<string, int> topTags = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            totalEntries = await JournalService.GetTotalEntryCountAsync();
+
+            var settings = await JournalService.GetSettingsAsync();
+            currentStreak = settings.CurrentStreak;
+            longestStreak = settings.LongestStreak;
+
+            var allEntries = await JournalService.GetAllEntriesAsync();
+            if (allEntries.Any())
+            {
+                avgWords = (int)allEntries.Average(e => e.WordCount);
+            }
+
+            moodDistribution = await JournalService.GetMoodDistributionAsync();
+            topTags = await JournalService.GetMostUsedTagsAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading dashboard: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

@@ -1,0 +1,88 @@
+﻿@page "/timeline"
+@inject JournalService JournalService
+
+<PageTitle>Timeline - My Journal</PageTitle>
+
+<div class="container">
+    <h3>Timeline</h3>
+
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (entries.Any())
+    {
+        <div class="timeline-container">
+            @foreach (var entry in entries)
+            {
+                <div class="timeline-entry card mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            @entry.EntryDate.ToString("MMMM dd, yyyy")
+                        </h5>
+
+                        <h6 class="card-subtitle mb-2 text-muted">
+                            Mood: @entry.PrimaryMood (@entry.MoodCategory)
+                        </h6>
+
+                        <p class="card-text">
+                            @GetPreview(entry.Content)
+                        </p>
+
+                        <a href="@($"/journal?date={entry.EntryDate:yyyy-MM-dd}")"
+                           class="btn btn-sm btn-primary">
+                            View Full Entry
+                        </a>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            <strong>No entries yet!</strong>
+            Start journaling to see your timeline.
+        </div>
+    }
+</div>
+
+@code
+{
+    private List<JournalEntry> entries = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            entries = await JournalService.GetAllEntriesAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading timeline: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string GetPreview(string content)
+    {
+        // Strip HTML and get first 150 characters
+        var text = System.Text.RegularExpressions.Regex.Replace(
+            content,
+            "<.*?>",
+            string.Empty
+        );
+
+        return text.Length > 150
+            ? text.Substring(0, 150) + "..."
+            : text;
+    }
+}

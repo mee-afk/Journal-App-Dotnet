@@ -1,0 +1,115 @@
+﻿<div class="nav-menu">
+    <div class="nav-header">
+        <h3>My Journal</h3>
+    </div>
+
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+                <span class="oi oi-book" aria-hidden="true"></span> Today's Journal
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/calendar">
+                <span class="oi oi-calendar" aria-hidden="true"></span> Calendar
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/timeline">
+                <span class="oi oi-list" aria-hidden="true"></span> Timeline
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/search">
+                <span class="oi oi-magnifying-glass" aria-hidden="true"></span> Search
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/dashboard">
+                <span class="oi oi-graph" aria-hidden="true"></span> Dashboard
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/settings">
+                <span class="oi oi-cog" aria-hidden="true"></span> Settings
+            </NavLink>
+        </div>
+    </nav>
+</div>
+
+<style>
+    .nav-menu {
+        background-color: #f8f9fa;
+        height: 100%;
+    }
+
+    [data-theme="dark"] .nav-menu {
+        background-color: #2d2d2d;
+    }
+
+    .nav-header {
+        padding: 1rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    [data-theme="dark"] .nav-header {
+        border-bottom-color: #404040;
+    }
+
+    .nav-header h3 {
+        margin: 0;
+        color: #007bff;
+        font-size: 1.25rem;
+    }
+
+    [data-theme="dark"] .nav-header h3 {
+        color: #4da3ff;
+    }
+
+    .nav-item {
+        margin-top: 0.5rem;
+    }
+
+    .nav-link {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        color: #495057;
+        text-decoration: none;
+        border-radius: 0.25rem;
+        transition: all 0.2s;
+    }
+
+    [data-theme="dark"] .nav-link {
+        color: #b0b0b0;
+    }
+
+    .nav-link:hover {
+        background-color: #e9ecef;
+        color: #007bff;
+    }
+
+    [data-theme="dark"] .nav-link:hover {
+        background-color: #404040;
+        color: #4da3ff;
+    }
+
+    .nav-link.active {
+        background-color: #007bff;
+        color: white;
+    }
+
+    [data-theme="dark"] .nav-link.active {
+        background-color: #0056b3;
+    }
+
+    .nav-link .oi {
+        margin-right: 0.75rem;
+        font-size: 1.1rem;
+    }
+</style>

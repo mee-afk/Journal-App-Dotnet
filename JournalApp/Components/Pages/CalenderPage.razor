@@ -1,0 +1,199 @@
+﻿@page "/calendar"
+@inject IJSRuntime JS
+
+
+<h3>Calendar View</h3>
+
+<div class="calendar-container">
+    <div class="calendar-header">
+        <div class="calendar-nav">
+            <button class="btn btn-outline-secondary" @onclick="PreviousMonth">
+                <span class="oi oi-chevron-left"></span>
+            </button>
+            <h4 class="calendar-title">@currentMonth.ToString("MMMM yyyy")</h4>
+            <button class="btn btn-outline-secondary" @onclick="NextMonth">
+                <span class="oi oi-chevron-right"></span>
+            </button>
+        </div>
+
+        <div class="calendar-actions">
+            <button class="btn btn-outline-primary" @onclick="GoToToday">Today</button>
+        </div>
+    </div>
+
+    <div class="calendar-weekdays">
+        <div class="weekday">Sun</div>
+        <div class="weekday">Mon</div>
+        <div class="weekday">Tue</div>
+        <div class="weekday">Wed</div>
+        <div class="weekday">Thu</div>
+        <div class="weekday">Fri</div>
+        <div class="weekday">Sat</div>
+    </div>
+
+    <div class="calendar-grid">
+        @foreach (var day in calendarDays)
+        {
+                <div class="calendar-day @(day.IsCurrentMonth ? "" : "other-month")
+                    @(day.HasEntry ? "has-entry" : "no-entry")
+                    @(day.IsToday ? "today" : "")"
+                     @onclick="() => SelectDay(day)">
+                    <div class="day-number">@day.DayNumber</div>
+                @if (day.HasEntry)
+                {
+                            <div class="day-mood">
+                                <span class="mood-dot @day.MoodColor"></span>
+                            </div>
+                }
+                @if (day.HasTags)
+                {
+                            <div class="day-tags">
+                        @foreach (var tag in day.Tags.Take(2))
+                        {
+                                        <span class="day-tag">@tag</span>
+                        }
+                        @if (day.Tags.Count > 2)
+                        {
+                                        <span class="day-tag-more">+@(day.Tags.Count - 2)</span>
+                        }
+                            </div>
+                }
+                </div>
+        }
+    </div>
+
+    <!-- Selected Day Details -->
+    @if (selectedDay != null)
+    {
+            <div class="selected-day-details">
+                <h5>@selectedDay.Date.ToString("dddd, MMMM dd, yyyy")</h5>
+            @if (selectedDay.HasEntry)
+            {
+                        <div class="entry-preview">
+                            <div class="entry-mood">
+                                <strong>Mood:</strong>
+                                <span class="badge @selectedDay.MoodColor">@selectedDay.Mood</span>
+                            </div>
+                            <div class="entry-content">
+                        @selectedDay.Preview
+                            </div>
+                            <button class="btn btn-primary btn-sm mt-2" @onclick="EditEntry">Edit Entry</button>
+                        </div>
+            }
+            else
+            {
+                        <div class="no-entry">
+                            <p>No entry for this day.</p>
+                            <button class="btn btn-success btn-sm" @onclick="CreateEntry">Create Entry</button>
+                        </div>
+            }
+            </div>
+    }
+</div>
+
+@code {
+    private DateTime currentMonth = DateTime.Today;
+    private List<CalendarDay> calendarDays = new();
+    private CalendarDay? selectedDay = null;
+
+    protected override void OnInitialized()
+    {
+        GenerateCalendar();
+    }
+
+    private void GenerateCalendar()
+    {
+        calendarDays.Clear();
+
+        var firstDayOfMonth = new DateTime(currentMonth.Year, currentMonth.Month, 1);
+        var lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
+
+        // Start from Sunday of the week containing the first day
+        var startDate = firstDayOfMonth.AddDays(-(int)firstDayOfMonth.DayOfWeek);
+
+        // Generate 42 days (6 weeks)
+        for (int i = 0; i < 42; i++)
+        {
+            var date = startDate.AddDays(i);
+            var hasEntry = date.Day % 3 == 0; // Simulated data
+            var mood = hasEntry ? GetRandomMood() : "";
+
+            calendarDays.Add(new CalendarDay
+                {
+                    Date = date,
+                    DayNumber = date.Day,
+                    IsCurrentMonth = date.Month == currentMonth.Month,
+                    HasEntry = hasEntry,
+                    Mood = mood,
+                    MoodColor = GetMoodColor(mood),
+                    Preview = hasEntry ? "Preview of journal entry for this day..." : "",
+                    Tags = hasEntry ? new List<string> { "Work", "Fitness", "Family" }.Take(date.Day % 3 + 1).ToList() : new List<string>(),
+                    IsToday = date.Date == DateTime.Today
+                });
+        }
+    }
+
+    private string GetRandomMood()
+    {
+        var moods = new List<string> { "Happy", "Calm", "Sad", "Excited", "Stressed" };
+        return moods[new Random().Next(moods.Count)];
+    }
+
+    private string GetMoodColor(string mood)
+    {
+        return mood switch
+        {
+            "Happy" or "Excited" or "Grateful" => "positive",
+            "Calm" or "Thoughtful" => "neutral",
+            "Sad" or "Stressed" or "Anxious" => "negative",
+            _ => ""
+        };
+    }
+
+    private void PreviousMonth()
+    {
+        currentMonth = currentMonth.AddMonths(-1);
+        GenerateCalendar();
+    }
+
+    private void NextMonth()
+    {
+        currentMonth = currentMonth.AddMonths(1);
+        GenerateCalendar();
+    }
+
+    private void GoToToday()
+    {
+        currentMonth = DateTime.Today;
+        GenerateCalendar();
+    }
+
+    private void SelectDay(CalendarDay day)
+    {
+        selectedDay = day;
+    }
+
+    private void EditEntry()
+    {
+        // Navigate to journal editor with selected date
+    }
+
+    private void CreateEntry()
+    {
+        // Navigate to journal editor with selected date
+    }
+
+    class CalendarDay
+    {
+        public DateTime Date { get; set; }
+        public int DayNumber { get; set; }
+        public bool IsCurrentMonth { get; set; }
+        public bool HasEntry { get; set; }
+        public string Mood { get; set; } = "";
+        public string MoodColor { get; set; } = "";
+        public string Preview { get; set; } = "";
+        public List<string> Tags { get; set; } = new();
+        public bool HasTags => Tags.Any();
+        public bool IsToday { get; set; }
+    }
+}
