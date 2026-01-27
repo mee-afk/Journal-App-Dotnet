@@ -1,9 +1,12 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
+
 using Microsoft.EntityFrameworkCore;
+
 using JournalApp.Data;
 using JournalApp.Models;
 using JournalApp.Services;
+
 
 namespace JournalApp.Services
 {
@@ -13,9 +16,8 @@ namespace JournalApp.Services
     public class UserService
     {
         private readonly JournalDbContext _context;
-        private User? _currentUser;
         private readonly ThemeService _themeService;
-
+        private User? _currentUser;
 
         public User? CurrentUser => _currentUser;
         public bool IsLoggedIn => _currentUser != null;
@@ -82,10 +84,15 @@ namespace JournalApp.Services
         /// <summary>
         /// Logs in a user with username and password
         /// </summary>
-        public async Task<(bool Success, string Message)> LoginAsync(string username, string password)
+        public async Task<(bool Success, string Message)> LoginAsync(
+            string username,
+            string password)
         {
-            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+            if (string.IsNullOrWhiteSpace(username) ||
+                string.IsNullOrWhiteSpace(password))
+            {
                 return (false, "Username and password are required");
+            }
 
             var user = await _context.Users
                 .FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
@@ -110,22 +117,82 @@ namespace JournalApp.Services
 
             UserLoggedIn?.Invoke(this, user);
 
-            
-
             return (true, "Login successful");
+        }
+
+        /// <summary>
+        /// Logs in a user with PIN (quick login)
+        /// </summary>
+        public async Task<(bool Success, string Message, List<User>? Users)> LoginWithPinAsync(
+            string pin)
+        {
+            try
+            {
+                var hashedPin = HashPassword(pin);
+
+                // Find all users with this PIN
+                var usersWithPin = await _context.Users
+                    .Where(u => u.PinHash == hashedPin && u.IsActive)
+                    .ToListAsync();
+
+                if (!usersWithPin.Any())
+                    return (false, "Invalid PIN", null);
+
+                if (usersWithPin.Count == 1)
+                {
+                    // Only one user has this PIN - auto login
+                    var user = usersWithPin[0];
+                    user.LastLoginAt = DateTime.Now;
+                    await _context.SaveChangesAsync();
+
+                    _currentUser = user;
+                    _themeService.LoadTheme(user);
+                    UserLoggedIn?.Invoke(this, user);
+
+                    return (true, "Login successful", null);
+                }
+                else
+                {
+                    // Multiple users have the same PIN - need to select
+                    return (true, "Multiple users found", usersWithPin);
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, $"PIN login failed: {ex.Message}", null);
+            }
+        }
+
+        /// <summary>
+        /// Selects a specific user after PIN matches multiple accounts
+        /// </summary>
+        public async Task<(bool Success, string Message)> SelectUserAfterPinAsync(
+            int userId)
+        {
+            try
+            {
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null || !user.IsActive)
+                    return (false, "User not found");
+
+                user.LastLoginAt = DateTime.Now;
+                await _context.SaveChangesAsync();
+
+                _currentUser = user;
+                _themeService.LoadTheme(user);
+                UserLoggedIn?.Invoke(this, user);
+
+                return (true, "Login successful");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"User selection failed: {ex.Message}");
+            }
         }
 
         /// <summary>
         /// Logs out the current user
         /// </summary>
-        /// 
-        public async Task LoadLastUserAsync()
-{
-    _currentUser = await _context.Users
-        .OrderByDescending(u => u.LastLoginAt)
-        .FirstOrDefaultAsync();
-}
-
         public void Logout()
         {
             _currentUser = null;
@@ -138,7 +205,68 @@ namespace JournalApp.Services
         public void SetCurrentUser(User user)
         {
             _currentUser = user;
+            _themeService.LoadTheme(user);
             UserLoggedIn?.Invoke(this, user);
+        }
+
+        /// <summary>
+        /// Loads the last logged in user on app start
+        /// </summary>
+        public async Task LoadLastUserAsync()
+        {
+            _currentUser = await _context.Users
+                .OrderByDescending(u => u.LastLoginAt)
+                .FirstOrDefaultAsync();
+        }
+
+        #endregion
+
+        #region Password Management
+
+        /// <summary>
+        /// Changes the current user's password
+        /// </summary>
+        public async Task<(bool Success, string Message)> ChangePasswordAsync(
+            string currentPassword,
+            string newPassword,
+            string confirmPassword)
+        {
+            try
+            {
+                if (_currentUser == null)
+                    return (false, "No user logged in");
+
+                if (string.IsNullOrWhiteSpace(currentPassword))
+                    return (false, "Current password is required");
+
+                if (string.IsNullOrWhiteSpace(newPassword))
+                    return (false, "New password is required");
+
+                if (newPassword.Length < 6)
+                    return (false, "New password must be at least 6 characters");
+
+                if (newPassword != confirmPassword)
+                    return (false, "New passwords do not match");
+
+                var currentHash = HashPassword(currentPassword);
+                if (_currentUser.PasswordHash != currentHash)
+                    return (false, "Current password is incorrect");
+
+                var user = await _context.Users.FindAsync(_currentUser.Id);
+                if (user == null)
+                    return (false, "User not found");
+
+                user.PasswordHash = HashPassword(newPassword);
+                await _context.SaveChangesAsync();
+
+                _currentUser.PasswordHash = user.PasswordHash;
+
+                return (true, "Password changed successfully");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Password change failed: {ex.Message}");
+            }
         }
 
         #endregion
@@ -155,7 +283,6 @@ namespace JournalApp.Services
                 _context.Users.Update(user);
                 await _context.SaveChangesAsync();
 
-                // Refresh current user if it's the same user
                 if (_currentUser?.Id == user.Id)
                 {
                     _currentUser = user;
@@ -174,16 +301,17 @@ namespace JournalApp.Services
         /// </summary>
         public async Task<bool> UpdateUserThemeAsync(string theme)
         {
-            if (_currentUser == null) return false;
+            if (_currentUser == null)
+                return false;
 
             var user = await _context.Users.FindAsync(_currentUser.Id);
-            if (user == null) return false;
+            if (user == null)
+                return false;
 
             user.Theme = theme;
             _context.Users.Update(user);
             await _context.SaveChangesAsync();
 
-            // Update current user
             _currentUser.Theme = theme;
             ThemeChanged?.Invoke(this, theme);
 
@@ -191,41 +319,16 @@ namespace JournalApp.Services
         }
 
         /// <summary>
-        /// Changes user password
-        /// </summary>
-        public async Task<(bool Success, string Message)> ChangePasswordAsync(
-            string currentPassword,
-            string newPassword)
-        {
-            if (_currentUser == null)
-                return (false, "Not logged in");
-
-            if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
-                return (false, "New password must be at least 6 characters");
-
-            var user = await _context.Users.FindAsync(_currentUser.Id);
-            if (user == null)
-                return (false, "User not found");
-
-            var hashedCurrent = HashPassword(currentPassword);
-            if (hashedCurrent != user.PasswordHash)
-                return (false, "Current password is incorrect");
-
-            user.PasswordHash = HashPassword(newPassword);
-            await _context.SaveChangesAsync();
-
-            return (true, "Password changed successfully");
-        }
-
-        /// <summary>
         /// Refreshes the current user data from database
         /// </summary>
         public async Task<bool> RefreshCurrentUserAsync()
         {
-            if (_currentUser == null) return false;
+            if (_currentUser == null)
+                return false;
 
             var user = await _context.Users.FindAsync(_currentUser.Id);
-            if (user == null) return false;
+            if (user == null)
+                return false;
 
             _currentUser = user;
             return true;
@@ -242,6 +345,15 @@ namespace JournalApp.Services
             }
         }
 
+        /// <summary>
+        /// Checks if current user has a PIN set
+        /// </summary>
+        public bool HasPin()
+        {
+            return _currentUser != null &&
+                   !string.IsNullOrEmpty(_currentUser.PinHash);
+        }
+
         #endregion
 
         #region Streak Management
@@ -255,31 +367,22 @@ namespace JournalApp.Services
 
             if (user.LastEntryDate == null)
             {
-                // First entry ever
                 user.CurrentStreak = 1;
                 user.LongestStreak = 1;
             }
             else
             {
-                var daysSinceLastEntry = (today - user.LastEntryDate.Value.Date).Days;
+                var daysSinceLastEntry =
+                    (today - user.LastEntryDate.Value.Date).Days;
 
-                if (daysSinceLastEntry == 0)
+                if (daysSinceLastEntry == 1)
                 {
-                    // Entry for today already exists (updating)
-                    // Don't change streak
-                }
-                else if (daysSinceLastEntry == 1)
-                {
-                    // Consecutive day
                     user.CurrentStreak++;
                     if (user.CurrentStreak > user.LongestStreak)
-                    {
                         user.LongestStreak = user.CurrentStreak;
-                    }
                 }
-                else
+                else if (daysSinceLastEntry > 1)
                 {
-                    // Streak broken
                     user.CurrentStreak = 1;
                 }
             }
@@ -288,7 +391,6 @@ namespace JournalApp.Services
             _context.Users.Update(user);
             await _context.SaveChangesAsync();
 
-            // Update current user if it's the same
             if (_currentUser?.Id == user.Id)
             {
                 _currentUser = user;
@@ -301,7 +403,8 @@ namespace JournalApp.Services
         public async Task RecalculateUserStreaksAsync(int userId)
         {
             var user = await _context.Users.FindAsync(userId);
-            if (user == null) return;
+            if (user == null)
+                return;
 
             var allEntries = await _context.JournalEntries
                 .Where(e => e.UserId == userId)
@@ -322,7 +425,9 @@ namespace JournalApp.Services
 
                 for (int i = 1; i < allEntries.Count; i++)
                 {
-                    var daysDiff = (allEntries[i] - allEntries[i - 1]).Days;
+                    var daysDiff =
+                        (allEntries[i] - allEntries[i - 1]).Days;
+
                     if (daysDiff == 1)
                     {
                         currentStreak++;
@@ -335,14 +440,12 @@ namespace JournalApp.Services
                     }
                 }
 
-                // Check if streak continues to today
                 var lastEntry = allEntries.Last();
-                var daysSinceLastEntry = (DateTime.Today - lastEntry).Days;
+                var daysSinceLastEntry =
+                    (DateTime.Today - lastEntry).Days;
 
                 if (daysSinceLastEntry > 1)
-                {
-                    currentStreak = 0; // Streak broken
-                }
+                    currentStreak = 0;
 
                 user.CurrentStreak = currentStreak;
                 user.LongestStreak = longestStreak;
@@ -352,7 +455,6 @@ namespace JournalApp.Services
             _context.Users.Update(user);
             await _context.SaveChangesAsync();
 
-            // Update current user if it's the same
             if (_currentUser?.Id == userId)
             {
                 _currentUser = user;
