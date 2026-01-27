@@ -237,7 +237,9 @@
         {
             // Correct call: pass the theme string
             await UserService.UpdateUserThemeAsync(newTheme);
-            await ThemeService.SetThemeAsync(newTheme);
+            // await ThemeService.SetThemeAsync(newTheme);
+            await ThemeService.ToggleThemeAsync(UserService.CurrentUser.Id);
+
         }
     }
 

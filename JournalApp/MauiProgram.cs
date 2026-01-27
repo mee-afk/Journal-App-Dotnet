@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using JournalApp.Data;
 using JournalApp.Services;
+using System.Diagnostics;
 
 namespace JournalApp
 {
@@ -27,17 +28,18 @@ namespace JournalApp
 
             // Configure SQLite Database with Entity Framework Core
             var dbPath = Path.Combine(FileSystem.AppDataDirectory, "journal.db3");
+            Debug.WriteLine($"DB PATH: {dbPath}");
 
-            System.Diagnostics.Debug.WriteLine($"Database path: {dbPath}");
 
             builder.Services.AddDbContext<JournalDbContext>(options =>
                 options.UseSqlite($"Data Source={dbPath}"));
 
             // Register Services in correct dependency order
             // UserService must be registered first as others depend on it
+            builder.Services.AddSingleton<ThemeService>();
             builder.Services.AddScoped<UserService>();
+            builder.Services.AddSingleton<UserSessionService>();
             builder.Services.AddScoped<JournalService>();
-            builder.Services.AddScoped<ThemeService>();
             builder.Services.AddScoped<AuthenticationService>();
             builder.Services.AddScoped<ExportService>();
 

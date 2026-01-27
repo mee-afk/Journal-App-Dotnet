@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using JournalApp.Data;
 using JournalApp.Models;
+using JournalApp.Services;
 
 namespace JournalApp.Services
 {
@@ -13,6 +14,8 @@ namespace JournalApp.Services
     {
         private readonly JournalDbContext _context;
         private User? _currentUser;
+        private readonly ThemeService _themeService;
+
 
         public User? CurrentUser => _currentUser;
         public bool IsLoggedIn => _currentUser != null;
@@ -22,9 +25,10 @@ namespace JournalApp.Services
         public event EventHandler? UserLoggedOut;
         public event EventHandler<string>? ThemeChanged;
 
-        public UserService(JournalDbContext context)
+        public UserService(JournalDbContext context, ThemeService themeService)
         {
             _context = context;
+            _themeService = themeService;
         }
 
         #region User Registration & Login
@@ -102,7 +106,11 @@ namespace JournalApp.Services
 
             // Set current user
             _currentUser = user;
+            _themeService.LoadTheme(user);
+
             UserLoggedIn?.Invoke(this, user);
+
+            
 
             return (true, "Login successful");
         }
@@ -110,6 +118,14 @@ namespace JournalApp.Services
         /// <summary>
         /// Logs out the current user
         /// </summary>
+        /// 
+        public async Task LoadLastUserAsync()
+{
+    _currentUser = await _context.Users
+        .OrderByDescending(u => u.LastLoginAt)
+        .FirstOrDefaultAsync();
+}
+
         public void Logout()
         {
             _currentUser = null;

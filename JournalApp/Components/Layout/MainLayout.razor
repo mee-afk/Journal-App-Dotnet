@@ -1,6 +1,9 @@
 ﻿@inherits LayoutComponentBase
-@inject ThemeService ThemeService
+using JournalApp Services
 @inject NavigationManager Navigation
+@inject UserService UserService
+@inject ThemeService ThemeService
+
 
 <div class="page" data-theme="@currentTheme">
     <div class="sidebar">
@@ -29,27 +32,27 @@
 
     protected override void OnInitialized()
     {
-        currentTheme = ThemeService.CurrentTheme.ToLower();
-        isDarkTheme = currentTheme == "dark";
-
         ThemeService.ThemeChanged += OnThemeChanged;
+        // Sync current theme immediately
+        OnThemeChanged(this, ThemeService.CurrentTheme);
     }
 
     private async Task ToggleTheme()
     {
-        await ThemeService.ToggleThemeAsync();
+        // await ThemeService.ToggleThemeAsync();
+        await ThemeService.ToggleThemeAsync(UserService.CurrentUser.Id);
+
     }
 
     private void OnThemeChanged(object? sender, string newTheme)
     {
         currentTheme = newTheme.ToLower();
         isDarkTheme = currentTheme == "dark";
-        StateHasChanged();
+        InvokeAsync(StateHasChanged); // safe update
     }
 
     private void ShowLockScreen()
     {
-        // Navigate to lock screen (to be implemented)
         Navigation.NavigateTo("/lock");
     }
 

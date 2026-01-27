@@ -1,6 +1,7 @@
 ﻿@page "/login"
 @using System.ComponentModel.DataAnnotations;
 @inject UserService UserService
+@inject ThemeService ThemeService
 @inject NavigationManager Navigation
 
 <PageTitle>Login - My Journal</PageTitle>
@@ -136,7 +137,10 @@
             if (result.Success)
             {
                 // AuthenticationService.SetCurrentUser(loggedInUser);
-                Navigation.NavigateTo("/", forceLoad: true);
+                // Notify ThemeService to load this user's theme
+                // await _currentTheme.SetThemeAsync(_user.Theme ?? "Light");
+                Navigation.NavigateTo("/");
+               
             }
             else
             {
