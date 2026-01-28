@@ -269,6 +269,15 @@ namespace JournalApp.Services
             }
         }
 
+        /// <summary>
+        /// OVERLOAD: Simplified password change for Settings page (returns bool)
+        /// </summary>
+        public async Task<bool> ChangePasswordAsync(string currentPassword, string newPassword)
+        {
+            var result = await ChangePasswordAsync(currentPassword, newPassword, newPassword);
+            return result.Success;
+        }
+
         #endregion
 
         #region User Profile Management
@@ -352,6 +361,47 @@ namespace JournalApp.Services
         {
             return _currentUser != null &&
                    !string.IsNullOrEmpty(_currentUser.PinHash);
+        }
+
+        /// <summary>
+        /// Deletes the current user's account and all associated data
+        /// </summary>
+        public async Task<bool> DeleteAccountAsync()
+        {
+            if (_currentUser == null)
+                return false;
+
+            try
+            {
+                var user = await _context.Users.FindAsync(_currentUser.Id);
+                if (user == null)
+                    return false;
+
+                // Delete all user's journal entries
+                var entries = await _context.JournalEntries
+                    .Where(e => e.UserId == user.Id)
+                    .ToListAsync();
+
+                if (entries.Any())
+                {
+                    _context.JournalEntries.RemoveRange(entries);
+                }
+
+                // Delete user
+                _context.Users.Remove(user);
+                await _context.SaveChangesAsync();
+
+                // Clear current user
+                _currentUser = null;
+                UserLoggedOut?.Invoke(this, EventArgs.Empty);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting account: {ex.Message}");
+                return false;
+            }
         }
 
         #endregion

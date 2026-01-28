@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
 
 namespace JournalApp.Models
 {
@@ -64,6 +61,8 @@ namespace JournalApp.Models
         /// </summary>
         [Required]
         public int UserId { get; set; }
+
+        public string Title { get; set; } = string.Empty;
 
         /// <summary>
         /// Date of the journal entry (one per user per day)

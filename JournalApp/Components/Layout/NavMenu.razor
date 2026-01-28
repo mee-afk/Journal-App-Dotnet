@@ -1,59 +1,74 @@
 ﻿<div class="nav-menu">
     <div class="nav-header">
-        <h3>My Journal</h3>
+        <div class="logo-container">
+            <div class="logo-icon">
+                <i class="bi bi-journal-bookmark-fill"></i>
+            </div>
+            <h3 class="logo-text">My Journal</h3>
+        </div>
+        <div class="user-badge">
+            <i class="bi bi-person-circle"></i>
+            <span>@UserService.CurrentUser?.FullName</span>
+        </div>
     </div>
 
-    <nav class="flex-column">
+    <nav class="flex-column nav-links-container">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
-                <span class="oi oi-book" aria-hidden="true"></span> Today's Journal
+                <i class="bi bi-house-door-fill nav-icon"></i>
+                <span class="nav-text">Home</span>
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="/journal">
-                <span class="oi oi-calendar" aria-hidden="true"></span> Journal
+                <i class="bi bi-pencil-square nav-icon"></i>
+                <span class="nav-text">Journal</span>
             </NavLink>
-        </div> 
+        </div>
+
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="/calendar">
-                <span class="oi oi-calendar" aria-hidden="true"></span> Calendar
+                <i class="bi bi-calendar3 nav-icon"></i>
+                <span class="nav-text">Calendar</span>
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="/timeline">
-                <span class="oi oi-list" aria-hidden="true"></span> Timeline
+                <i class="bi bi-clock-history nav-icon"></i>
+                <span class="nav-text">Timeline</span>
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="/search">
-                <span class="oi oi-magnifying-glass" aria-hidden="true"></span> Search
+                <i class="bi bi-search nav-icon"></i>
+                <span class="nav-text">Search</span>
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="/dashboard">
-                <span class="oi oi-graph" aria-hidden="true"></span> Dashboard
+                <i class="bi bi-bar-chart-fill nav-icon"></i>
+                <span class="nav-text">Dashboard</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-divider"></div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/settings">
+                <i class="bi bi-gear-fill nav-icon"></i>
+                <span class="nav-text">Settings</span>
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/settings">
-                <span class="oi oi-cog" aria-hidden="true"></span> Settings
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/profile">
-                <span class="oi oi-cog" aria-hidden="true"></span> Profile
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <button class="btn btn-link nav-link"
+            <button class="btn btn-link nav-link logout-btn"
                     @onclick="HandleLogout">
-                <span class="oi oi-account-logout"></span>
-                Logout
+                <i class="bi bi-box-arrow-right nav-icon"></i>
+                <span class="nav-text">Logout</span>
             </button>
         </div>
     </nav>
@@ -75,74 +90,214 @@
         );
     }
 }
+
 <style>
     .nav-menu {
-        background-color: #f8f9fa;
+        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
         height: 100%;
+        position: relative;
+        overflow: hidden;
     }
 
-    [data-theme="dark"] .nav-menu {
-        background-color: #2d2d2d;
+    .nav-menu::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        opacity: 0.3;
     }
 
     .nav-header {
-        padding: 1rem;
-        border-bottom: 1px solid #dee2e6;
+        padding: 1.5rem 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        position: relative;
+        z-index: 1;
     }
 
-    [data-theme="dark"] .nav-header {
-        border-bottom-color: #404040;
+    .logo-container {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
     }
 
-    .nav-header h3 {
+    .logo-icon {
+        width: 48px;
+        height: 48px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+        backdrop-filter: blur(10px);
+    }
+
+    .logo-text {
         margin: 0;
-        color: #007bff;
-        font-size: 1.25rem;
+        color: white;
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: -0.5px;
     }
 
-    [data-theme="dark"] .nav-header h3 {
-        color: #4da3ff;
+    .user-badge {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(255, 255, 255, 0.15);
+        padding: 0.5rem 0.75rem;
+        border-radius: 10px;
+        color: white;
+        font-size: 0.9rem;
+        font-weight: 500;
+        backdrop-filter: blur(10px);
+    }
+
+    .user-badge i {
+        font-size: 1.2rem;
+    }
+
+    .nav-links-container {
+        padding: 1rem 0;
+        position: relative;
+        z-index: 1;
     }
 
     .nav-item {
-        margin-top: 0.5rem;
+        margin-top: 0.25rem;
     }
 
     .nav-link {
         display: flex;
         align-items: center;
-        padding: 0.75rem 1rem;
-        color: #495057;
+        padding: 0.85rem 1rem;
+        color: rgba(255, 255, 255, 0.85);
         text-decoration: none;
-        border-radius: 0.25rem;
-        transition: all 0.2s;
-    }
-
-    [data-theme="dark"] .nav-link {
-        color: #b0b0b0;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        font-weight: 500;
+        backdrop-filter: blur(10px);
     }
 
     .nav-link:hover {
-        background-color: #e9ecef;
-        color: #007bff;
-    }
-
-    [data-theme="dark"] .nav-link:hover {
-        background-color: #404040;
-        color: #4da3ff;
+        background: rgba(255, 255, 255, 0.15);
+        color: white;
+        transform: translateX(5px);
     }
 
     .nav-link.active {
-        background-color: #007bff;
+        background: rgba(255, 255, 255, 0.25);
         color: white;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .nav-icon {
+        margin-right: 0.85rem;
+        font-size: 1.2rem;
+        min-width: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .nav-text {
+        font-size: 0.95rem;
+    }
+
+    .logout-btn {
+        color: rgba(255, 255, 255, 0.85) !important;
+        text-align: left;
+        width: 100%;
+        border: none;
+        background: transparent;
+    }
+
+    .logout-btn:hover {
+        background: rgba(255, 107, 107, 0.2) !important;
+        color: white !important;
+    }
+
+    .nav-divider {
+        height: 1px;
+        background: rgba(255, 255, 255, 0.1);
+        margin: 0.75rem 1.5rem;
+    }
+
+    /* Dark theme support */
+    [data-theme="dark"] .nav-menu {
+        background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+    }
+
+    [data-theme="dark"] .logo-icon {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="dark"] .user-badge {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    [data-theme="dark"] .nav-link:hover {
+        background: rgba(255, 255, 255, 0.08);
     }
 
     [data-theme="dark"] .nav-link.active {
-        background-color: #0056b3;
+        background: rgba(102, 126, 234, 0.3);
     }
 
-    .nav-link .oi {
-        margin-right: 0.75rem;
-        font-size: 1.1rem;
+    /* Responsive adjustments */
+    @@media (max-width: 768px) {
+        .nav-header {
+            padding: 1rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 1.2rem;
+        }
+
+        .logo-text {
+            font-size: 1.25rem;
+        }
+
+        .nav-link {
+            padding: 0.75rem 0.85rem;
+        }
+
+        .nav-icon {
+            font-size: 1.1rem;
+            margin-right: 0.75rem;
+        }
+    }
+
+    /* Smooth scroll */
+    .nav-menu {
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+    }
+
+    .nav-menu::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .nav-menu::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .nav-menu::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 3px;
+    }
+
+    .nav-menu::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.5);
     }
 </style>

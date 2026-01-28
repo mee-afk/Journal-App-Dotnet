@@ -1,6 +1,837 @@
 ﻿@page "/"
+@page "/home"
+@inject JournalService JournalService
+@inject UserService UserService
+@inject NavigationManager Navigation
 
-<PageTitle>My Journal</PageTitle>
+<PageTitle>Home - My Journal</PageTitle>
 
-<!-- Redirect to Journal page -->
-<Journal />
+<AuthGuard>
+    <div class="home-page">
+        <!-- Hero Welcome Section -->
+        <div class="hero-section mb-5">
+            <div class="container">
+                <div class="row align-items-center">
+                    <div class="col-lg-8">
+                        <div class="hero-content">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="hero-icon me-3">
+                                    <i class="bi bi-journal-bookmark-fill"></i>
+                                </div>
+                                <div>
+                                    <h1 class="hero-title mb-1">
+                                        Welcome back, <span class="text-light">@UserService.CurrentUser?.FullName</span>! 👋
+                                    </h1>
+                                    <p class="hero-subtitle text-white-50">
+                                        <i class="bi bi-stars me-1"></i>
+                                        Today is @DateTime.Now.ToString("dddd, MMMM dd, yyyy")
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 text-lg-end">
+                        <button class="btn btn-primary btn-lg btn-gradient px-4 py-3" @onclick="GoToNewEntry">
+                            <i class="bi bi-plus-circle me-2"></i>
+                            New Journal Entry
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard -->
+        <div class="container pb-5">
+            <div class="row g-4">
+                <!-- Left Column: Stats & Quick Actions -->
+                <div class="col-lg-4">
+                    <!-- User Stats Card -->
+                    <div class="card stats-card border-0 shadow-sm mb-4">
+                        <div class="card-body p-4">
+                            <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center p-0 mb-4">
+                                <h5 class="card-title d-flex align-items-center mb-0">
+                                    <i class="bi bi-bar-chart me-2 text-primary"></i>
+                                    Your Journal Stats
+                                </h5>
+                                <a href="/dashboard" class="btn btn-sm btn-outline-primary">
+                                    View All
+                                </a>
+                            </div>
+                            <div class="stats-grid mb-4">
+                                <div class="stat-item text-center">
+                                    <div class="stat-icon text-primary">
+                                        <i class="bi bi-journal-text"></i>
+                                    </div>
+                                    <div class="stat-value">@TotalEntries</div>
+                                    <div class="stat-label">Total Entries</div>
+                                </div>
+                                <div class="stat-item text-center">
+                                    <div class="stat-icon text-warning">
+                                        <i class="bi bi-fire"></i>
+                                    </div>
+                                    <div class="stat-value">@CurrentStreak</div>
+                                    <div class="stat-label">Day Streak</div>
+                                </div>
+                                <div class="stat-item text-center">
+                                    <div class="stat-icon text-info">
+                                        <i class="bi bi-calendar-week"></i>
+                                    </div>
+                                    <div class="stat-value">@ThisWeekEntries</div>
+                                    <div class="stat-label">This Week</div>
+                                </div>
+                                <div class="stat-item text-center">
+                                    <div class="stat-icon text-warning">
+                                        <i class="bi bi-emoji-smile"></i>
+                                    </div>
+                                    <div class="stat-value">@MostCommonMood</div>
+                                    <div class="stat-label">Top Mood</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Middle Column: Recent Entries -->
+                <div class="col-lg-5">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center p-4">
+                            <h5 class="mb-0">
+                                <i class="bi bi-clock-history me-2 text-primary"></i>
+                                Recent Entries
+                            </h5>
+                            <a href="/timeline" class="btn btn-sm btn-outline-primary">
+                                View All
+                            </a>
+                        </div>
+
+                        <div class="card-body p-4 pt-0">
+                            @if (RecentEntries.Any())
+                            {
+                                    <div class="recent-entries">
+                                    @foreach (var entry in RecentEntries)
+                                    {
+                                                <div class="recent-entry-card card border-0 shadow-sm mb-3" @onclick="() => ViewEntry(entry.Id)">
+                                                    <div class="card-body p-3">
+                                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                                            <h6 class="card-title mb-0 text-truncate">
+                                                        @(string.IsNullOrEmpty(entry.Title) ? "Untitled Entry" : entry.Title)
+                                                            </h6>
+                                                            <small class="text-muted">@entry.EntryDate.ToString("MMM dd")</small>
+                                                        </div>
+
+                                                        <div class="d-flex align-items-center mb-2">
+                                                            <span class="badge" style="background-color: @GetMoodColorByName(entry.PrimaryMood);">
+                                                        @entry.PrimaryMood
+                                                            </span>
+                                                    @if (!string.IsNullOrEmpty(entry.Category))
+                                                    {
+                                                                    <small class="text-muted ms-2">
+                                                                        <i class="bi bi-tag me-1"></i>@entry.Category
+                                                                    </small>
+                                                    }
+                                                        </div>
+
+                                                        <p class="card-text text-muted small mb-0">
+                                                    @GetPreview(entry.Content)
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                    }
+                                    </div>
+                            }
+                            else
+                            {
+                                    <div class="empty-entries text-center py-5">
+                                        <i class="bi bi-journal-x text-muted" style="font-size: 3rem;"></i>
+                                        <h5 class="text-muted mt-3">No entries yet</h5>
+                                        <p class="text-muted small">Start your journaling journey today!</p>
+                                        <button class="btn btn-primary mt-2" @onclick="GoToNewEntry">
+                                            Create First Entry
+                                        </button>
+                                    </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Today's Prompt & Quick Stats -->
+                <div class="col-lg-3">
+                    <!-- Quick Stats -->
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-body p-4">
+                            <h5 class="card-title d-flex align-items-center mb-3">
+                                <i class="bi bi-speedometer2 me-2 text-info"></i>
+                                Quick Stats
+                            </h5>
+
+                            <div class="small quick-stats-list">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Words Written</span>
+                                    <span class="fw-bold">@TotalWords.ToString("N0")</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Avg. Entry Length</span>
+                                    <span class="fw-bold">@AvgWords words</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Best Streak</span>
+                                    <span class="fw-bold text-success">@BestStreak days</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-muted">Most Active Day</span>
+                                    <span class="fw-bold">@MostActiveDay</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Daily Quote -->
+                    <div class="card border-0 shadow-sm quote-card">
+                        <div class="card-body p-4 text-white">
+                            <div class="text-center">
+                                <i class="bi bi-chat-quote mb-3" style="font-size: 2rem; opacity: 0.8;"></i>
+                                <p class="mb-3 fst-italic">"@DailyQuote"</p>
+                                <small class="opacity-75">— @QuoteAuthor</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Section: Calendar Preview -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card calendar-card border-0 shadow-sm">
+                        <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center p-4">
+                            <h5 class="mb-0">
+                                <i class="bi bi-calendar3 me-2 text-primary"></i>
+                                This Month at a Glance
+                            </h5>
+                            <a href="/calendar" class="btn btn-sm btn-outline-primary">
+                                Full Calendar
+                            </a>
+                        </div>
+
+                        <div class="card-body p-4">
+                            <div class="mini-calendar">
+                                <!-- Month header -->
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <button class="btn btn-sm btn-calendar-nav" @onclick="PreviousMonth">
+                                        <i class="bi bi-chevron-left"></i>
+                                    </button>
+                                    <h6 class="mb-0 fw-bold calendar-month-title">@MiniCalendarMonth.ToString("MMMM yyyy")</h6>
+                                    <button class="btn btn-sm btn-calendar-nav" @onclick="NextMonth">
+                                        <i class="bi bi-chevron-right"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Mini calendar grid -->
+                                <div class="mini-calendar-grid">
+                                    <!-- Day headers -->
+                                    <div class="mini-calendar-header">
+                                        @foreach (var day in new[] { "S", "M", "T", "W", "T", "F", "S" })
+                                        {
+                                                <div class="mini-calendar-header-cell">@day</div>
+                                        }
+                                    </div>
+
+                                    <!-- Calendar days -->
+                                    <div class="mini-calendar-days">
+                                        @foreach (var day in MiniCalendarDays)
+                                        {
+                                                <div class="mini-calendar-day @GetMiniDayClasses(day)"
+                                                     @onclick="() => SelectMiniDate(day)"
+                                                     title="@day.ToString("MMMM d, yyyy")">
+                                                    <div class="mini-day-number">@day.Day</div>
+                                                @if (HasMiniEntry(day))
+                                                {
+                                                            <div class="mini-mood-dot" style="background-color: @GetMiniDayMoodColor(day)"></div>
+                                                }
+                                                </div>
+                                        }
+                                    </div>
+                                </div>
+
+                                <!-- Legend -->
+                                <div class="mini-calendar-legend mt-3">
+                                    <small class="text-muted me-3">
+                                        <span class="mini-mood-dot bg-success me-1"></span> Positive
+                                    </small>
+                                    <small class="text-muted me-3">
+                                        <span class="mini-mood-dot bg-info me-1"></span> Neutral
+                                    </small>
+                                    <small class="text-muted">
+                                        <span class="mini-mood-dot bg-danger me-1"></span> Negative
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</AuthGuard>
+
+<style>
+    /* Base page background */
+    .home-page {
+        background-color: var(--background-color);
+        min-height: 100vh;
+    }
+
+    /* Hero Section */
+    .hero-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 40px 0;
+        color: white;
+        border-radius: 0 0 30px 30px;
+    }
+
+    .hero-icon {
+        font-size: 2.5rem;
+        background: rgba(255, 255, 255, 0.2);
+        width: 70px;
+        height: 70px;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(10px);
+    }
+
+    .hero-title {
+        font-size: 2.2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: white;
+    }
+
+    .hero-subtitle {
+        font-size: 1.1rem;
+        opacity: 0.9;
+    }
+
+    .btn-gradient {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        color: #667eea;
+        font-weight: 600;
+        border: none;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease;
+    }
+
+    .btn-gradient:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+        color: #667eea;
+    }
+
+    /* Cards - Dark theme support */
+    .card,
+    .stats-card,
+    .calendar-card {
+        background-color: var(--card-background) !important;
+        color: var(--text-primary) !important;
+        border-color: var(--border-color) !important;
+    }
+
+    .card-title,
+    .card-header h5 {
+        color: var(--text-primary) !important;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+
+    .stat-item {
+        padding: 15px;
+        background: var(--surface-color);
+        border-radius: 12px;
+        transition: all 0.3s ease;
+    }
+
+    .stat-item:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .stat-icon {
+        font-size: 1.8rem;
+        margin-bottom: 10px;
+    }
+
+    .stat-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin: 5px 0;
+        color: var(--text-primary);
+    }
+
+    .stat-label {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+
+    /* Recent Entries */
+    .recent-entry-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+        background-color: var(--surface-color) !important;
+    }
+
+    .recent-entry-card:hover {
+        transform: translateX(5px);
+        box-shadow: var(--shadow-md) !important;
+    }
+
+    .recent-entry-card .card-title {
+        color: var(--text-primary) !important;
+    }
+
+    .recent-entry-card .card-text {
+        color: var(--text-secondary) !important;
+    }
+
+    /* Empty state */
+    .empty-entries {
+        background-color: var(--surface-color);
+        border-radius: 15px;
+    }
+
+    /* Quick Stats */
+    .quick-stats-list span {
+        color: var(--text-primary);
+    }
+
+    .quick-stats-list .text-muted {
+        color: var(--text-muted) !important;
+    }
+
+    /* Quote Card */
+    .quote-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+
+    /* Calendar */
+    .calendar-month-title {
+        color: var(--text-primary);
+    }
+
+    .btn-calendar-nav {
+        background-color: var(--surface-color);
+        border-color: var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .btn-calendar-nav:hover {
+        background-color: var(--hover-background);
+        color: var(--text-primary);
+    }
+
+    /* Mini Calendar */
+    .mini-calendar-header-cell {
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+
+    .mini-calendar-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .mini-calendar-header {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        text-align: center;
+        margin-bottom: 10px;
+    }
+
+    .mini-calendar-days {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 4px;
+    }
+
+    .mini-calendar-day {
+        aspect-ratio: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+        padding: 5px;
+        background-color: var(--surface-color);
+        color: var(--text-primary);
+    }
+
+    .mini-calendar-day:hover {
+        background-color: var(--hover-background);
+        transform: scale(1.1);
+        z-index: 1;
+    }
+
+    .mini-calendar-day.today {
+        background-color: rgba(102, 126, 234, 0.2);
+        font-weight: bold;
+    }
+
+    .mini-calendar-day.has-entry {
+        background-color: rgba(25, 135, 84, 0.1);
+    }
+
+    [data-theme="dark"] .mini-calendar-day.has-entry {
+        background-color: rgba(25, 135, 84, 0.15);
+    }
+
+    .mini-calendar-day.other-month {
+        opacity: 0.4;
+    }
+
+    .mini-day-number {
+        font-size: 0.9rem;
+        margin-bottom: 2px;
+    }
+
+    .mini-mood-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+    }
+
+    .mini-calendar-legend .mini-mood-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+
+    /* Responsive */
+    @@media (max-width: 992px) {
+        .hero-title {
+            font-size: 1.8rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .hero-section {
+            padding: 30px 0;
+            border-radius: 0 0 20px 20px;
+        }
+
+        .hero-title {
+            font-size: 1.5rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .btn-gradient {
+            width: 100%;
+            margin-top: 15px;
+        }
+    }
+
+    @@media (max-width: 576px) {
+        .stat-value {
+            font-size: 1.3rem;
+        }
+
+        .mini-calendar-header-cell {
+            font-size: 0.75rem;
+        }
+
+        .mini-day-number {
+            font-size: 0.8rem;
+        }
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    // Stats
+    private int TotalEntries = 0;
+    private int CurrentStreak = 0;
+    private int ThisWeekEntries = 0;
+    private string MostCommonMood = "N/A";
+    private int TotalWords = 0;
+    private int AvgWords = 0;
+    private int BestStreak = 0;
+    private string MostActiveDay = "N/A";
+    private Dictionary<string, int> MoodDistribution = new();
+
+    // Data
+    private List<JournalEntry> RecentEntries = new();
+    private List<DateTime> MiniCalendarDays = new();
+    private Dictionary<DateTime, JournalEntry> MiniEntriesMap = new();
+    private DateTime MiniCalendarMonth = DateTime.Today;
+
+    // Prompts & Quotes
+    private string DailyPrompt = "What made you smile today?";
+    private string DailyQuote = "The journey of a thousand miles begins with a single step";
+    private string QuoteAuthor = "Lao Tzu";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardData();
+        GenerateMiniCalendarDays();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        if (!UserService.IsLoggedIn)
+            return;
+
+        try
+        {
+            // Load user streak data
+            if (UserService.CurrentUser != null)
+            {
+                CurrentStreak = UserService.CurrentUser.CurrentStreak;
+                BestStreak = UserService.CurrentUser.LongestStreak;
+            }
+
+            // Load recent entries
+            var allEntries = await JournalService.GetAllEntriesAsync();
+            RecentEntries = allEntries.OrderByDescending(e => e.EntryDate).Take(5).ToList();
+
+            // Calculate stats
+            TotalEntries = allEntries.Count;
+
+            // This week entries
+            var startOfWeek = DateTime.Today.AddDays(-(int)DateTime.Today.DayOfWeek);
+            ThisWeekEntries = allEntries.Count(e => e.EntryDate >= startOfWeek);
+
+            // Most common mood
+            if (allEntries.Any())
+            {
+                var moodGroups = allEntries
+                    .GroupBy(e => e.PrimaryMood)
+                    .OrderByDescending(g => g.Count())
+                    .ToList();
+
+                MostCommonMood = moodGroups.FirstOrDefault()?.Key ?? "N/A";
+
+                // Mood distribution (percentage)
+                var totalWithMood = allEntries.Count;
+                MoodDistribution = moodGroups
+                    .Take(5) // Top 5 moods
+                    .ToDictionary(
+                        g => g.Key,
+                        g => (int)Math.Round((double)g.Count() / totalWithMood * 100)
+                    );
+            }
+
+            // Total words
+            TotalWords = allEntries.Sum(e => e.WordCount);
+            AvgWords = allEntries.Any() ? (int)allEntries.Average(e => e.WordCount) : 0;
+
+            // Most active day
+            if (allEntries.Any())
+            {
+                var dayGroups = allEntries
+                    .GroupBy(e => e.EntryDate.DayOfWeek)
+                    .OrderByDescending(g => g.Count())
+                    .FirstOrDefault();
+
+                MostActiveDay = dayGroups?.Key.ToString() ?? "N/A";
+            }
+
+            // Load mini calendar data
+            await LoadMiniCalendarEntries();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading dashboard data: {ex.Message}");
+        }
+    }
+
+    private async Task LoadMiniCalendarEntries()
+    {
+        try
+        {
+            var startDate = new DateTime(MiniCalendarMonth.Year, MiniCalendarMonth.Month, 1);
+            var endDate = startDate.AddMonths(1).AddDays(-1);
+
+            var allEntries = await JournalService.GetAllEntriesAsync();
+            var monthEntries = allEntries.Where(e =>
+                e.EntryDate.Date >= startDate.Date &&
+                e.EntryDate.Date <= endDate.Date
+            ).ToList();
+
+            MiniEntriesMap = monthEntries.ToDictionary(e => e.EntryDate.Date, e => e);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading mini calendar entries: {ex.Message}");
+        }
+    }
+
+    private void GenerateMiniCalendarDays()
+    {
+        MiniCalendarDays.Clear();
+
+        var firstDay = new DateTime(MiniCalendarMonth.Year, MiniCalendarMonth.Month, 1);
+        var lastDay = firstDay.AddMonths(1).AddDays(-1);
+
+        // Add days from previous month to fill the first week
+        var startDayOfWeek = (int)firstDay.DayOfWeek;
+        var previousMonth = firstDay.AddMonths(-1);
+        var daysInPreviousMonth = DateTime.DaysInMonth(previousMonth.Year, previousMonth.Month);
+
+        for (int i = startDayOfWeek - 1; i >= 0; i--)
+        {
+            MiniCalendarDays.Add(new DateTime(previousMonth.Year, previousMonth.Month, daysInPreviousMonth - i));
+        }
+
+        // Add days of current month
+        for (int day = 1; day <= lastDay.Day; day++)
+        {
+            MiniCalendarDays.Add(new DateTime(MiniCalendarMonth.Year, MiniCalendarMonth.Month, day));
+        }
+
+        // Add days from next month to fill the last week
+        var remainingDays = 42 - MiniCalendarDays.Count;
+        var nextMonth = firstDay.AddMonths(1);
+        for (int day = 1; day <= remainingDays; day++)
+        {
+            MiniCalendarDays.Add(new DateTime(nextMonth.Year, nextMonth.Month, day));
+        }
+    }
+
+    private string GetMoodColorByName(string mood)
+    {
+        var positiveMoods = new[] { "Happy", "Excited", "Relaxed", "Grateful", "Confident" };
+        var neutralMoods = new[] { "Calm", "Thoughtful", "Curious", "Nostalgic", "Bored" };
+        var negativeMoods = new[] { "Sad", "Angry", "Stressed", "Lonely", "Anxious" };
+
+        if (positiveMoods.Contains(mood))
+            return "#4caf50";
+        else if (neutralMoods.Contains(mood))
+            return "#2196f3";
+        else if (negativeMoods.Contains(mood))
+            return "#ff5722";
+        else
+            return "#9e9e9e";
+    }
+
+    private string GetMiniDayMoodColor(DateTime day)
+    {
+        if (MiniEntriesMap.TryGetValue(day.Date, out var entry))
+        {
+            return GetMoodColorByName(entry.PrimaryMood);
+        }
+        return "#9e9e9e";
+    }
+
+    private string GetPreview(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+            return "No content";
+
+        var text = System.Text.RegularExpressions.Regex.Replace(content, "<.*?>", string.Empty);
+        text = System.Net.WebUtility.HtmlDecode(text);
+        return text.Length > 100 ? text.Substring(0, 100) + "..." : text;
+    }
+
+    // Navigation methods
+    private void GoToNewEntry()
+    {
+        Navigation.NavigateTo("/journal");
+    }
+
+    private void GoToCalendar()
+    {
+        Navigation.NavigateTo("/calendar");
+    }
+
+    private void GoToTimeline()
+    {
+        Navigation.NavigateTo("/timeline");
+    }
+
+    private void GoToInsights()
+    {
+        Navigation.NavigateTo("/dashboard");
+    }
+
+    private void GoToSettings()
+    {
+        Navigation.NavigateTo("/settings");
+    }
+
+    private void ViewEntry(int id)
+    {
+        Navigation.NavigateTo($"/journal/view/{id}");
+    }
+
+    private void UsePrompt()
+    {
+        Navigation.NavigateTo($"/journal?prompt={Uri.EscapeDataString(DailyPrompt)}");
+    }
+
+    // Mini calendar methods
+    private string GetMiniDayClasses(DateTime day)
+    {
+        var classes = new List<string>();
+
+        if (day.Month != MiniCalendarMonth.Month)
+            classes.Add("other-month");
+
+        if (day.Date == DateTime.Today)
+            classes.Add("today");
+
+        if (HasMiniEntry(day))
+            classes.Add("has-entry");
+
+        return string.Join(" ", classes);
+    }
+
+    private bool HasMiniEntry(DateTime day)
+    {
+        return MiniEntriesMap.ContainsKey(day.Date);
+    }
+
+    private void SelectMiniDate(DateTime date)
+    {
+        if (MiniEntriesMap.TryGetValue(date.Date, out var entry))
+        {
+            // Entry exists - navigate to view it
+            Navigation.NavigateTo($"/journal/view/{entry.Id}");
+        }
+    }
+
+    private async Task PreviousMonth()
+    {
+        MiniCalendarMonth = MiniCalendarMonth.AddMonths(-1);
+        GenerateMiniCalendarDays();
+        await LoadMiniCalendarEntries();
+    }
+
+    private async Task NextMonth()
+    {
+        MiniCalendarMonth = MiniCalendarMonth.AddMonths(1);
+        GenerateMiniCalendarDays();
+        await LoadMiniCalendarEntries();
+    }
+}

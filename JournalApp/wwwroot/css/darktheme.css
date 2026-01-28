@@ -1,0 +1,711 @@
+﻿/* Additional site-wide dark theme styles */
+
+/* Main page wrapper */
+.page {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: var(--background-color);
+}
+
+/* Sidebar */
+.sidebar {
+    background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Main content area */
+main {
+    flex: 1;
+    background-color: var(--background-color);
+}
+
+    main .content {
+        background-color: var(--background-color);
+    }
+
+/* Article content */
+article.content {
+    background-color: var(--background-color);
+    color: var(--text-primary);
+}
+
+/* Ensure all text inherits proper colors */
+body {
+    background-color: var(--background-color);
+    color: var(--text-primary);
+}
+
+/* Top row if you have one */
+.top-row {
+    background-color: var(--surface-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Loading indicators */
+.spinner-border {
+    color: #667eea;
+}
+
+[data-theme="dark"] .spinner-border {
+    color: #667eea;
+}
+
+/* Text muted color fix */
+.text-muted {
+    color: var(--text-muted) !important;
+}
+
+/* Ensure headings are visible */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary);
+}
+
+/* Links */
+a {
+    color: #667eea;
+}
+
+    a:hover {
+        color: #5568d3;
+    }
+
+[data-theme="dark"] a {
+    color: #8b9bff;
+}
+
+    [data-theme="dark"] a:hover {
+        color: #a3b1ff;
+    }
+
+/* Bootstrap overrides for dark theme */
+[data-theme="dark"] .bg-light {
+    background-color: var(--surface-color) !important;
+}
+
+[data-theme="dark"] .bg-white {
+    background-color: var(--card-background) !important;
+}
+
+[data-theme="dark"] .text-dark {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .border {
+    border-color: var(--border-color) !important;
+}
+
+/* Ensure proper contrast for badges */
+[data-theme="dark"] .badge {
+    color: white;
+}
+
+/* Button outline variants in dark mode */
+[data-theme="dark"] .btn-outline-primary {
+    color: #8b9bff;
+    border-color: #8b9bff;
+}
+
+    [data-theme="dark"] .btn-outline-primary:hover {
+        background-color: #8b9bff;
+        border-color: #8b9bff;
+        color: white;
+    }
+
+[data-theme="dark"] .btn-outline-secondary {
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+    [data-theme="dark"] .btn-outline-secondary:hover {
+        background-color: var(--hover-background);
+        border-color: var(--border-color);
+        color: var(--text-primary);
+    }
+
+/* Fix for any remaining white backgrounds */
+[data-theme="dark"] .container,
+[data-theme="dark"] .container-fluid {
+    background-color: transparent;
+}
+
+/* Ensure proper spacing and visibility */
+.pb-5 {
+    padding-bottom: 3rem !important;
+}
+
+/* Shadow adjustments for dark theme */
+[data-theme="dark"] .shadow-sm {
+    box-shadow: var(--shadow-sm) !important;
+}
+
+[data-theme="dark"] .shadow {
+    box-shadow: var(--shadow-md) !important;
+}
+
+[data-theme="dark"] .shadow-lg {
+    box-shadow: var(--shadow-lg) !important;
+}
+
+/* ========================================
+   CALENDAR PAGE DARK THEME
+   ======================================== */
+.calendar-page {
+    background-color: var(--background-color);
+}
+
+[data-theme="dark"] .calendar-grid {
+    background: linear-gradient(145deg, var(--surface-color), var(--card-background));
+}
+
+[data-theme="dark"] .calendar-header-row {
+    background: rgba(102, 126, 234, 0.1);
+}
+
+[data-theme="dark"] .calendar-header-cell {
+    color: var(--text-secondary);
+    text-shadow: none;
+}
+
+[data-theme="dark"] .calendar-days-grid {
+    background: linear-gradient(135deg, var(--surface-color), var(--card-background));
+}
+
+[data-theme="dark"] .calendar-day-cell {
+    background: var(--card-background);
+    color: var(--text-primary);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+    [data-theme="dark"] .calendar-day-cell:hover {
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    [data-theme="dark"] .calendar-day-cell.other-month {
+        background: var(--surface-color);
+        opacity: 0.5;
+    }
+
+    [data-theme="dark"] .calendar-day-cell.has-entry {
+        background: linear-gradient(135deg, rgba(255, 193, 7, 0.15), rgba(255, 193, 7, 0.08));
+    }
+
+[data-theme="dark"] .day-number {
+    color: var(--text-primary);
+    text-shadow: none;
+}
+
+[data-theme="dark"] .entry-indicator {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    text-shadow: none;
+}
+
+[data-theme="dark"] .btn-calendar-nav,
+[data-theme="dark"] .btn.btn-sm.btn-light {
+    background-color: var(--surface-color);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+/* ========================================
+   DASHBOARD PAGE DARK THEME
+   ======================================== */
+.dashboard-page {
+    background-color: var(--background-color);
+}
+
+[data-theme="dark"] .pie-legend {
+    background: rgba(45, 55, 72, 0.95);
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .legend-item {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+    [data-theme="dark"] .legend-item:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+[data-theme="dark"] .legend-label {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .legend-value {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .mood-card {
+    background: var(--card-background);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .mood-card-name {
+    color: var(--text-primary);
+}
+
+/* ========================================
+   SEARCH PAGE DARK THEME
+   ======================================== */
+.search-page {
+    background-color: var(--background-color);
+}
+
+[data-theme="dark"] .search-input,
+[data-theme="dark"] .date-input,
+[data-theme="dark"] .category-select {
+    background-color: var(--card-background);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .result-card {
+    background-color: var(--card-background);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .result-title {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .result-preview {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .tag-cloud-item {
+    color: var(--text-primary);
+}
+/* ========================================
+   SETTINGS PAGE DARK THEME
+   ======================================== */
+.settings-page {
+    background-color: var(--background-color);
+    min-height: 100vh;
+}
+
+/* Settings Header */
+[data-theme="dark"] .settings-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+    [data-theme="dark"] .settings-header h1 {
+        color: white !important;
+    }
+
+[data-theme="dark"] .settings-subtitle {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="dark"] .user-badge {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+}
+
+[data-theme="dark"] .user-name {
+    color: white;
+}
+
+[data-theme="dark"] .user-email {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+[data-theme="dark"] .user-avatar {
+    background: rgba(255, 255, 255, 0.25);
+    color: white;
+}
+
+/* Settings Container */
+[data-theme="dark"] .settings-container {
+    background-color: var(--background-color);
+}
+
+/* Accordion Items */
+[data-theme="dark"] .settings-accordion-item {
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .accordion-header {
+    background: var(--surface-color);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+    [data-theme="dark"] .accordion-header:hover {
+        background: var(--hover-background);
+    }
+
+[data-theme="dark"] .accordion-title {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .accordion-arrow {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .accordion-content {
+    background: var(--card-background);
+    color: var(--text-primary);
+}
+
+/* Profile Section */
+[data-theme="dark"] .profile-grid {
+    background: var(--card-background);
+}
+
+[data-theme="dark"] .profile-item {
+    background: var(--surface-color);
+    border-color: var(--border-color);
+}
+
+    [data-theme="dark"] .profile-item label {
+        color: var(--text-muted);
+    }
+
+[data-theme="dark"] .profile-value {
+    color: var(--text-primary);
+}
+
+/* Streak Badges */
+[data-theme="dark"] .streak-badge {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+}
+
+/* Theme Toggle */
+[data-theme="dark"] .setting-option {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .option-title {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .option-description {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .theme-toggle input:checked + .toggle-slider {
+    background-color: #667eea;
+}
+
+/* Theme Preview */
+[data-theme="dark"] .preview-card {
+    border-color: var(--border-color);
+}
+
+    [data-theme="dark"] .preview-card.dark {
+        background: var(--surface-color);
+        color: var(--text-primary);
+    }
+
+        [data-theme="dark"] .preview-card.dark .preview-header {
+            background: var(--card-background);
+            color: var(--text-primary);
+            border-bottom-color: var(--border-color);
+        }
+
+        [data-theme="dark"] .preview-card.dark .preview-text {
+            color: var(--text-secondary);
+        }
+
+        [data-theme="dark"] .preview-card.dark .preview-btn {
+            background: #667eea;
+            color: white;
+        }
+
+        [data-theme="dark"] .preview-card.dark .preview-btn-outline {
+            border-color: var(--border-color);
+            color: var(--text-primary);
+        }
+
+/* Security Section */
+[data-theme="dark"] .security-section {
+    background: var(--card-background);
+}
+
+[data-theme="dark"] .section-title {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .section-description {
+    color: var(--text-secondary);
+}
+
+/* Forms */
+[data-theme="dark"] .form-container {
+    background: var(--surface-color);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .form-group label {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .form-input {
+    background-color: var(--card-background);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+    [data-theme="dark"] .form-input:focus {
+        background-color: var(--card-background);
+        border-color: #667eea;
+        color: var(--text-primary);
+    }
+
+    [data-theme="dark"] .form-input::placeholder {
+        color: var(--text-muted);
+    }
+
+[data-theme="dark"] .form-hint {
+    color: var(--text-muted);
+}
+
+/* Alerts */
+[data-theme="dark"] .alert {
+    background-color: var(--surface-color);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .alert-success {
+    background-color: rgba(40, 167, 69, 0.15);
+    border-color: rgba(40, 167, 69, 0.3);
+    color: #51cf66;
+}
+
+[data-theme="dark"] .alert-error {
+    background-color: rgba(220, 53, 69, 0.15);
+    border-color: rgba(220, 53, 69, 0.3);
+    color: #ff6b6b;
+}
+
+[data-theme="dark"] .alert-info {
+    background-color: rgba(33, 150, 243, 0.15);
+    border-color: rgba(33, 150, 243, 0.3);
+    color: #4dabf7;
+}
+
+/* PIN Section */
+[data-theme="dark"] .pin-info-box,
+[data-theme="dark"] .pin-display-box {
+    background: var(--surface-color);
+    border-color: var(--border-color);
+}
+
+    [data-theme="dark"] .pin-info-box strong,
+    [data-theme="dark"] .pin-display-box strong {
+        color: var(--text-primary);
+    }
+
+    [data-theme="dark"] .pin-info-box p {
+        color: var(--text-secondary);
+    }
+
+[data-theme="dark"] .pin-label {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .pin-code {
+    background: var(--card-background);
+    color: #667eea;
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .pin-masked {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .pin-warning {
+    background-color: rgba(255, 193, 7, 0.15);
+    border-color: rgba(255, 193, 7, 0.3);
+    color: #ffa94d;
+}
+
+[data-theme="dark"] .pin-reveal {
+    background: var(--surface-color);
+}
+
+[data-theme="dark"] .pin-hidden {
+    background: var(--surface-color);
+}
+
+[data-theme="dark"] .pin-status {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .status-indicator.active {
+    background-color: #51cf66;
+}
+
+/* PIN Actions */
+[data-theme="dark"] .pin-actions {
+    background: var(--card-background);
+}
+
+/* Export Section */
+[data-theme="dark"] .export-date-range {
+    background: var(--card-background);
+}
+
+[data-theme="dark"] .export-btn-large {
+    background: var(--surface-color);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+    [data-theme="dark"] .export-btn-large:hover {
+        background: var(--hover-background);
+    }
+
+[data-theme="dark"] .export-info strong {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .export-info small {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .export-tips {
+    background: var(--surface-color);
+    border-color: var(--border-color);
+}
+
+    [data-theme="dark"] .export-tips h6 {
+        color: var(--text-primary);
+    }
+
+    [data-theme="dark"] .export-tips ul li {
+        color: var(--text-secondary);
+    }
+
+/* Danger Zone */
+[data-theme="dark"] .danger-zone {
+    background: var(--surface-color);
+    border: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+[data-theme="dark"] .danger-warning {
+    background-color: rgba(220, 53, 69, 0.15);
+    color: #ff6b6b;
+}
+
+[data-theme="dark"] .warning-icon {
+    color: #ff6b6b;
+}
+
+/* Buttons */
+[data-theme="dark"] .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+[data-theme="dark"] .btn-secondary {
+    background-color: var(--surface-color);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+    [data-theme="dark"] .btn-secondary:hover {
+        background-color: var(--hover-background);
+    }
+
+[data-theme="dark"] .btn-success {
+    background-color: #51cf66;
+    color: white;
+}
+
+[data-theme="dark"] .btn-danger {
+    background-color: #ff6b6b;
+    color: white;
+}
+
+[data-theme="dark"] .btn-logout {
+    background-color: var(--surface-color);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+    [data-theme="dark"] .btn-logout:hover {
+        background-color: var(--hover-background);
+    }
+
+[data-theme="dark"] .btn-copy {
+    background-color: var(--surface-color);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .btn-info-outline,
+[data-theme="dark"] .btn-danger-outline,
+[data-theme="dark"] .btn-primary-outline {
+    background-color: transparent;
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+    [data-theme="dark"] .btn-info-outline:hover {
+        background-color: rgba(33, 150, 243, 0.1);
+        border-color: #4dabf7;
+        color: #4dabf7;
+    }
+
+    [data-theme="dark"] .btn-danger-outline:hover {
+        background-color: rgba(220, 53, 69, 0.1);
+        border-color: #ff6b6b;
+        color: #ff6b6b;
+    }
+
+    [data-theme="dark"] .btn-primary-outline:hover {
+        background-color: rgba(102, 126, 234, 0.1);
+        border-color: #667eea;
+        color: #667eea;
+    }
+
+/* Divider */
+[data-theme="dark"] .divider {
+    background-color: var(--border-color);
+}
+
+/* Spinner */
+[data-theme="dark"] .spinner,
+[data-theme="dark"] .spinner-large {
+    border-color: var(--border-color);
+    border-top-color: #667eea;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    [data-theme="dark"] .settings-header {
+        padding: 2rem 1rem;
+    }
+
+    [data-theme="dark"] .user-badge {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+
+/* ========================================
+   GLOBAL TEXT & HEADINGS
+   ======================================== */
+[data-theme="dark"] .page-header h1,
+[data-theme="dark"] .settings-header h1,
+[data-theme="dark"] h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] p {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .text-dark {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .bg-light {
+    background-color: var(--surface-color) !important;
+}

@@ -1,26 +1,434 @@
-﻿
-@* @page "/search" *@
-
-@* <PageTitle>Search - My Journal</PageTitle> *@
-
-@* <div class="container"> *@
-@*     <h3>Search & Filter</h3> *@
-@*     <p class="text-muted">Search functionality will be implemented here</p> *@
-@*     <div class="alert alert-info"> *@
-@*         <strong>Coming Soon!</strong> This feature is under development. *@
-@*     </div> *@
-@* </div> *@
-
-@page "/search"
+﻿@page "/search"
+@inject JournalService JournalService
+@inject NavigationManager Navigation
 
 <AuthGuard>
-    <PageTitle>Search - My Journal</PageTitle>
+    <div class="search-page">
+        <div class="page-header">
+            <h1>🔍 Search & Filter</h1>
+            <p>Find your journal entries quickly</p>
+        </div>
 
-    <div class="container">
-        <h3>Search & Filter</h3>
-        <p class="text-muted">Search functionality will be implemented here</p>
-        <div class="alert alert-info">
-            <strong>Coming Soon!</strong> This feature is under development.
+        <div class="search-container">
+            <!-- Search Input -->
+            <div class="search-box">
+                <input type="text"
+                       @bind="SearchQuery"
+                       @bind:event="oninput"
+                       @onkeyup="HandleSearchInput"
+                       placeholder="Search by title or content..."
+                       class="search-input" />
+                <button class="search-button" @onclick="PerformSearch">
+                    <span>🔍</span> Search
+                </button>
+            </div>
+
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-header">
+                    <h3>Filters</h3>
+                    <button class="btn-clear" @onclick="ClearFilters">Clear All</button>
+                </div>
+
+                <div class="filter-grid">
+                    <!-- Date Range Filter -->
+                    <div class="filter-group">
+                        <label>Date Range</label>
+                        <div class="date-inputs">
+                            <input type="date" @bind="FilterStartDate" class="date-input" />
+                            <span>to</span>
+                            <input type="date" @bind="FilterEndDate" class="date-input" />
+                        </div>
+                        <div class="quick-dates">
+                            <button @onclick="() => SetDateRange(7)">Last 7 days</button>
+                            <button @onclick="() => SetDateRange(30)">Last 30 days</button>
+                            <button @onclick="() => SetDateRange(90)">Last 90 days</button>
+                            <button @onclick="SetThisYear">This Year</button>
+                        </div>
+                    </div>
+
+                    <!-- Tags Filter -->
+                    <div class="filter-group">
+                        <label>Tags</label>
+                        @if (AvailableTags.Any())
+                        {
+                            <div class="tags-filter">
+                                @foreach (var tag in AvailableTags)
+                                {
+                                    <label class="tag-checkbox">
+                                        <input type="checkbox"
+                                               checked="@SelectedTags.Contains(tag)"
+                                               @onchange="e => ToggleTag(tag, e)" />
+                                        <span class="tag-label">@tag</span>
+                                    </label>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="no-data-small">No tags available</p>
+                        }
+                    </div>
+
+                    <!-- Category Filter -->
+                    <div class="filter-group">
+                        <label>Category</label>
+                        <select @bind="SelectedCategory" class="category-select">
+                            <option value="">All Categories</option>
+                            @foreach (var category in AvailableCategories)
+                            {
+                                <option value="@category">@category</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="filter-actions">
+                    <button class="btn btn-primary" @onclick="ApplyFilters">
+                        Apply Filters
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search Results -->
+            <div class="results-section">
+                @if (HasSearched)
+                {
+                    <div class="results-header">
+                        <h3>Results (@FilteredEntries.Count @(FilteredEntries.Count == 1 ? "entry" : "entries"))</h3>
+                        @if (FilteredEntries.Any())
+                        {
+                            <div class="sort-options">
+                                <label>Sort by:</label>
+                                <select @bind="SortOption" @bind:after="ApplySorting" class="form-select">
+                                    <option value="date-desc">Date (Newest First)</option>
+                                    <option value="date-asc">Date (Oldest First)</option>
+                                    @if (!string.IsNullOrWhiteSpace(SearchQuery))
+                                    {
+                                        <option value="relevance">Relevance</option>
+                                    }
+                                </select>
+                            </div>
+                        }
+                    </div>
+
+                    @if (IsSearching)
+                    {
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <p>Searching...</p>
+                        </div>
+                    }
+                    else if (FilteredEntries.Any())
+                    {
+                        <div class="results-list">
+                            @foreach (var entry in FilteredEntries)
+                            {
+                                <div class="result-card" @onclick="() => ViewEntry(entry)">
+                                    <div class="result-header">
+                                        <div class="result-date">
+                                            📅 @entry.EntryDate.ToString("MMMM dd, yyyy")
+                                        </div>
+                                        <div class="result-category">
+                                            @if (!string.IsNullOrEmpty(entry.Category))
+                                            {
+                                                <span class="category-badge">@entry.Category</span>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    @if (!string.IsNullOrEmpty(entry.Title))
+                                    {
+                                        <h4 class="result-title">@GetHighlightedTitle(entry.Title)</h4>
+                                    }
+
+                                    <div class="result-preview">
+                                        @((MarkupString)GetHighlightedPreview(entry.Content))
+                                    </div>
+
+                                    @if (!string.IsNullOrEmpty(entry.Tags))
+                                    {
+                                        <div class="result-tags">
+                                            @foreach (var tag in entry.Tags.Split(',').Take(5))
+                                            {
+                                                <span class="tag">@tag.Trim()</span>
+                                            }
+                                        </div>
+                                    }
+
+                                    <div class="result-meta">
+                                        <span>📝 @GetWordCount(entry.Content) words</span>
+                                        <span>🕐 Updated @entry.UpdatedAt.ToString("MMM dd, yyyy")</span>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="no-results">
+                            <div class="no-results-icon">🔍</div>
+                            <h3>No entries found</h3>
+                            <p>Try adjusting your search terms or filters</p>
+                            <button class="btn btn-secondary" @onclick="ClearFilters">Clear Filters</button>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="no-results">
+                        <div class="no-results-icon">✍️</div>
+                        <h3>Start Searching</h3>
+                        <p>Enter keywords or apply filters to find your entries</p>
+                    </div>
+                }
+            </div>
         </div>
     </div>
 </AuthGuard>
+
+@code {
+    // Search & Filter State
+    private string SearchQuery { get; set; } = string.Empty;
+    private DateTime? FilterStartDate { get; set; }
+    private DateTime? FilterEndDate { get; set; }
+    private HashSet<string> SelectedTags { get; set; } = new();
+    private string SelectedCategory { get; set; } = string.Empty;
+    private string SortOption { get; set; } = "date-desc";
+
+    // Data
+    private List<JournalEntry> AllEntries { get; set; } = new();
+    private List<JournalEntry> FilteredEntries { get; set; } = new();
+    private List<string> AvailableTags { get; set; } = new();
+    private List<string> AvailableCategories { get; set; } = new();
+
+    // UI State
+    private bool IsSearching { get; set; }
+    private bool HasSearched { get; set; } = false;
+    private System.Threading.Timer? searchDebounceTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        AllEntries = await JournalService.GetAllEntriesAsync();
+
+        // Extract available tags
+        AvailableTags = AllEntries
+            .Where(e => !string.IsNullOrEmpty(e.Tags))
+            .SelectMany(e => e.Tags.Split(','))
+            .Select(t => t.Trim())
+            .Distinct()
+            .OrderBy(t => t)
+            .ToList();
+
+        // Extract available categories
+        AvailableCategories = AllEntries
+            .Where(e => !string.IsNullOrEmpty(e.Category))
+            .Select(e => e.Category)
+            .Distinct()
+            .OrderBy(c => c)
+            .ToList();
+    }
+
+    private async Task HandleSearchInput(KeyboardEventArgs e)
+    {
+        // Auto-search when user types (with debounce)
+        searchDebounceTimer?.Dispose();
+        searchDebounceTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                if (!string.IsNullOrWhiteSpace(SearchQuery))
+                {
+                    await PerformSearch();
+                }
+                StateHasChanged();
+            });
+        }, null, 500, Timeout.Infinite);
+    }
+
+    private async Task PerformSearch()
+    {
+        IsSearching = true;
+        HasSearched = true;
+        StateHasChanged();
+
+        await Task.Delay(100); // Simulate search processing
+
+        await ApplyFilters();
+
+        IsSearching = false;
+    }
+
+    private async Task ApplyFilters()
+    {
+        HasSearched = true;
+        FilteredEntries = AllEntries;
+
+        // Apply search query
+        if (!string.IsNullOrWhiteSpace(SearchQuery))
+        {
+            var query = SearchQuery.ToLower();
+            FilteredEntries = FilteredEntries.Where(e =>
+                (e.Title?.ToLower().Contains(query) ?? false) ||
+                StripHtml(e.Content).ToLower().Contains(query)
+            ).ToList();
+        }
+
+        // Apply date range filter
+        if (FilterStartDate.HasValue)
+        {
+            FilteredEntries = FilteredEntries.Where(e => e.EntryDate.Date >= FilterStartDate.Value.Date).ToList();
+        }
+
+        if (FilterEndDate.HasValue)
+        {
+            FilteredEntries = FilteredEntries.Where(e => e.EntryDate.Date <= FilterEndDate.Value.Date).ToList();
+        }
+
+        // Apply tags filter
+        if (SelectedTags.Any())
+        {
+            FilteredEntries = FilteredEntries.Where(e =>
+                !string.IsNullOrEmpty(e.Tags) &&
+                e.Tags.Split(',').Select(t => t.Trim()).Intersect(SelectedTags).Any()
+            ).ToList();
+        }
+
+        // Apply category filter
+        if (!string.IsNullOrEmpty(SelectedCategory))
+        {
+            FilteredEntries = FilteredEntries.Where(e => e.Category == SelectedCategory).ToList();
+        }
+
+        await ApplySorting();
+    }
+
+    private async Task ApplySorting()
+    {
+        FilteredEntries = SortOption switch
+        {
+            "date-desc" => FilteredEntries.OrderByDescending(e => e.EntryDate).ToList(),
+            "date-asc" => FilteredEntries.OrderBy(e => e.EntryDate).ToList(),
+            "relevance" => FilteredEntries.OrderByDescending(e => CalculateRelevance(e)).ToList(),
+            _ => FilteredEntries
+        };
+    }
+
+    private int CalculateRelevance(JournalEntry entry)
+    {
+        if (string.IsNullOrWhiteSpace(SearchQuery))
+            return 0;
+
+        var query = SearchQuery.ToLower();
+        var score = 0;
+
+        // Title matches are more relevant
+        if (entry.Title?.ToLower().Contains(query) ?? false)
+            score += 10;
+
+        // Count occurrences in content
+        var content = StripHtml(entry.Content).ToLower();
+        score += content.Split(query).Length - 1;
+
+        return score;
+    }
+
+    private void ToggleTag(string tag, ChangeEventArgs e)
+    {
+        if ((bool)e.Value!)
+            SelectedTags.Add(tag);
+        else
+            SelectedTags.Remove(tag);
+    }
+
+    private void SetDateRange(int days)
+    {
+        FilterEndDate = DateTime.Today;
+        FilterStartDate = DateTime.Today.AddDays(-days);
+    }
+
+    private void SetThisYear()
+    {
+        FilterStartDate = new DateTime(DateTime.Today.Year, 1, 1);
+        FilterEndDate = DateTime.Today;
+    }
+
+    private async Task ClearFilters()
+    {
+        SearchQuery = string.Empty;
+        FilterStartDate = null;
+        FilterEndDate = null;
+        SelectedTags.Clear();
+        SelectedCategory = string.Empty;
+        HasSearched = false;
+        FilteredEntries.Clear();
+
+        StateHasChanged();
+    }
+
+    private string StripHtml(string html)
+    {
+        return System.Text.RegularExpressions.Regex.Replace(html ?? "", "<.*?>", string.Empty);
+    }
+
+    private string GetHighlightedTitle(string title)
+    {
+        if (string.IsNullOrWhiteSpace(SearchQuery) || string.IsNullOrEmpty(title))
+            return title;
+
+        // Don't use HTML markup, just return plain text
+        // Highlighting will be done via CSS
+        return title;
+    }
+
+    private string GetHighlightedPreview(string content)
+    {
+        var text = StripHtml(content);
+
+        if (text.Length > 200)
+            text = text.Substring(0, 200) + "...";
+
+        if (!string.IsNullOrWhiteSpace(SearchQuery))
+        {
+            // Escape HTML in the text first
+            text = System.Net.WebUtility.HtmlEncode(text);
+
+            // Then add mark tags
+            text = System.Text.RegularExpressions.Regex.Replace(
+                text,
+                $"({System.Text.RegularExpressions.Regex.Escape(System.Net.WebUtility.HtmlEncode(SearchQuery))})",
+                "<mark>$1</mark>",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase
+            );
+        }
+        else
+        {
+            text = System.Net.WebUtility.HtmlEncode(text);
+        }
+
+        return text;
+    }
+
+    private int GetWordCount(string content)
+    {
+        var text = StripHtml(content);
+        return text.Split(new[] { ' ', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
+    }
+
+    private void ViewEntry(JournalEntry entry)
+    {
+        // Navigation.NavigateTo($"/journal?date={entry.EntryDate:yyyy-MM-dd}");
+        Navigation.NavigateTo($"/journal/view/{entry.Id}");
+
+    }
+
+    public void Dispose()
+    {
+        searchDebounceTimer?.Dispose();
+    }
+}

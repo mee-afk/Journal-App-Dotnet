@@ -68,6 +68,11 @@ namespace JournalApp.Data
                 entity.HasIndex(e => e.UserId)
                       .HasDatabaseName("IX_JournalEntries_UserId");
 
+                entity.Property(e => e.Title)
+                      .IsRequired()
+                      .HasMaxLength(150);
+
+
                 // Additional indexes for performance
                 entity.HasIndex(e => e.MoodCategory)
                       .HasDatabaseName("IX_JournalEntries_MoodCategory");

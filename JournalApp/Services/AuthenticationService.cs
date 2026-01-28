@@ -20,6 +20,8 @@ namespace JournalApp.Services
             _userService = userService;
         }
 
+        #region PIN Management - Enhanced for Settings Page
+
         /// <summary>
         /// Checks if current user has a PIN set
         /// </summary>
@@ -34,13 +36,17 @@ namespace JournalApp.Services
 
         /// <summary>
         /// Sets up a new PIN for current user
+        /// UPDATED: Now supports both 4-digit (legacy) and 6-digit (new auto-generated) PINs
         /// </summary>
         public async Task<bool> SetPinAsync(string pin)
         {
             var currentUser = _userService.CurrentUser;
             if (currentUser == null) return false;
 
-            if (string.IsNullOrWhiteSpace(pin) || pin.Length != 4 || !pin.All(char.IsDigit))
+            // Validate PIN: Must be 4 or 6 digits (for backward compatibility and new system)
+            if (string.IsNullOrWhiteSpace(pin) ||
+                (pin.Length != 4 && pin.Length != 6) ||
+                !pin.All(char.IsDigit))
                 return false;
 
             var user = await _context.Users.FindAsync(currentUser.Id);
@@ -74,13 +80,17 @@ namespace JournalApp.Services
 
         /// <summary>
         /// Changes the PIN for current user
+        /// NOTE: This is kept for backward compatibility but the new Settings page
+        /// uses delete + regenerate workflow instead
         /// </summary>
         public async Task<bool> ChangePinAsync(string oldPin, string newPin)
         {
             if (!await ValidatePinAsync(oldPin))
                 return false;
 
-            if (string.IsNullOrWhiteSpace(newPin) || newPin.Length != 4 || !newPin.All(char.IsDigit))
+            if (string.IsNullOrWhiteSpace(newPin) ||
+                (newPin.Length != 4 && newPin.Length != 6) ||
+                !newPin.All(char.IsDigit))
                 return false;
 
             return await SetPinAsync(newPin);
@@ -88,22 +98,18 @@ namespace JournalApp.Services
 
         /// <summary>
         /// Removes the PIN protection for current user
+        /// UPDATED: Simplified for new Settings page - no longer requires PIN verification
+        /// (Settings page handles confirmation via UI)
         /// </summary>
-        public async Task<bool> RemovePinAsync(string currentPin)
+        public async Task<bool> RemovePinAsync(string currentPin = "")
         {
             var currentUser = _userService.CurrentUser;
             if (currentUser == null) return false;
 
-            // If PIN exists, verify it first
-            if (await IsPinSetAsync())
-            {
-                if (!await ValidatePinAsync(currentPin))
-                    return false;
-            }
-
             var user = await _context.Users.FindAsync(currentUser.Id);
             if (user == null) return false;
 
+            // Clear PIN without verification (Settings page handles UI confirmation)
             user.PinHash = null;
             _context.Users.Update(user);
             await _context.SaveChangesAsync();
@@ -114,12 +120,18 @@ namespace JournalApp.Services
             return true;
         }
 
+        #endregion
+
+        #region PIN Login
+
         /// <summary>
         /// Attempts to login using PIN (for quick login)
         /// </summary>
         public async Task<bool> LoginWithPinAsync(string username, string pin)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Username == username);
+
             if (user == null || string.IsNullOrEmpty(user.PinHash))
                 return false;
 
@@ -135,6 +147,10 @@ namespace JournalApp.Services
             return false;
         }
 
+        #endregion
+
+        #region Helper Methods
+
         /// <summary>
         /// Hashes a PIN using SHA256
         /// </summary>
@@ -145,5 +161,7 @@ namespace JournalApp.Services
             var hash = sha256.ComputeHash(bytes);
             return Convert.ToBase64String(hash);
         }
+
+        #endregion
     }
 }

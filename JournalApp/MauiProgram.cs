@@ -1,5 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
-using Microsoft.EntityFrameworkCore;
+﻿global using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+//using Microsoft.EntityFrameworkCore;
 using JournalApp.Data;
 using JournalApp.Services;
 using System.Diagnostics;
@@ -30,7 +31,6 @@ namespace JournalApp
             var dbPath = Path.Combine(FileSystem.AppDataDirectory, "journal.db3");
             Debug.WriteLine($"DB PATH: {dbPath}");
 
-
             builder.Services.AddDbContext<JournalDbContext>(options =>
                 options.UseSqlite($"Data Source={dbPath}"));
 
@@ -41,6 +41,9 @@ namespace JournalApp
             builder.Services.AddSingleton<UserSessionService>();
             builder.Services.AddScoped<JournalService>();
             builder.Services.AddScoped<AuthenticationService>();
+            builder.Services.AddScoped<ExportService>();
+
+            // ✨ NEW: Add PDF Export Service
             builder.Services.AddScoped<ExportService>();
 
             // Build the app
@@ -54,7 +57,6 @@ namespace JournalApp
                     using var scope = app.Services.CreateScope();
                     var context = scope.ServiceProvider.GetRequiredService<JournalDbContext>();
                     await context.InitializeDatabaseAsync();
-
                     System.Diagnostics.Debug.WriteLine("Database initialized successfully");
                 }
                 catch (Exception ex)

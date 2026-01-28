@@ -1,0 +1,379 @@
+﻿@page "/journal/view/{Id:int}"
+@inject JournalDbContext Db
+@inject NavigationManager Navigation
+@inject UserService UserService
+@inject IJSRuntime JS
+
+<PageTitle>@(entry?.Title ?? "Journal Entry") - My Journal</PageTitle>
+
+<style>
+    .view-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 3rem 0;
+        margin-bottom: 2rem;
+        border-radius: 0 0 20px 20px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .entry-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        line-height: 1.2;
+    }
+
+    .entry-meta {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        font-size: 1rem;
+        opacity: 0.9;
+        flex-wrap: wrap;
+    }
+
+    .entry-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .mood-display {
+        display: inline-flex;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+
+    .category-display {
+        display: inline-flex;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+
+    .tags-section {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-top: 1.5rem;
+        backdrop-filter: blur(10px);
+    }
+
+    .tags-section h5 {
+        color: white;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+    }
+
+    .tag-badge {
+        background-color: rgba(255, 255, 255, 0.25);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 15px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        backdrop-filter: blur(5px);
+    }
+
+    /* Sticky Action Bar */
+    .action-bar {
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        background: white;
+        padding: 1rem 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 2rem;
+        border-radius: 0 0 15px 15px;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .btn-back {
+        background-color: #e2e8f0;
+        color: #4a5568;
+        border: none;
+        border-radius: 10px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-back:hover {
+        background-color: #cbd5e0;
+        color: #2d3748;
+        transform: translateX(-5px);
+    }
+
+    .btn-edit {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-edit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .edit-restriction-notice {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 10px;
+        padding: 0.75rem 1.5rem;
+        color: #856404;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    /* Content Card */
+    .content-card {
+        background: white;
+        border-radius: 20px;
+        padding: 3rem;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        margin-bottom: 2rem;
+    }
+
+    .journal-content {
+        font-size: 1.1rem;
+        line-height: 1.8;
+        color: #2d3748;
+        word-wrap: break-word;
+    }
+
+    .journal-content p {
+        margin-bottom: 1rem;
+    }
+
+    .journal-content h1,
+    .journal-content h2,
+    .journal-content h3 {
+        color: #1a202c;
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .journal-content ul,
+    .journal-content ol {
+        margin: 1rem 0;
+        padding-left: 2rem;
+    }
+
+    .journal-content blockquote {
+        border-left: 4px solid #667eea;
+        padding-left: 1.5rem;
+        margin: 1.5rem 0;
+        color: #4a5568;
+        font-style: italic;
+    }
+
+    .loading-state {
+        text-align: center;
+        padding: 5rem 2rem;
+    }
+
+    .loading-state .spinner-border {
+        color: #667eea;
+        width: 3rem;
+        height: 3rem;
+    }
+
+    .loading-state p {
+        color: #718096;
+        font-size: 1.1rem;
+        margin-top: 1rem;
+    }
+
+    @@media (max-width: 768px) {
+        .entry-title {
+            font-size: 2rem;
+        }
+
+        .content-card {
+            padding: 2rem 1.5rem;
+        }
+
+        .journal-content {
+            font-size: 1rem;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .action-buttons button,
+        .action-buttons .edit-restriction-notice {
+            width: 100%;
+        }
+
+        .btn-back,
+        .btn-edit {
+            justify-content: center;
+        }
+    }
+</style>
+
+@if (entry == null)
+{
+        <div class="loading-state">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Loading your journal entry...</p>
+        </div>
+}
+else
+{
+        <!-- Header with Entry Details -->
+        <div class="view-header">
+            <div class="container mb-0">
+                <h1 class="entry-title">@entry.Title</h1>
+                <div class="entry-meta">
+                    <div class="entry-meta-item">
+                        <i class="bi bi-calendar3"></i>
+                        <span>@entry.EntryDate.ToLongDateString()</span>
+                    </div>
+                @if (!string.IsNullOrEmpty(entry.PrimaryMood))
+                {
+                            <div class="mood-display">
+                                <i class="bi bi-emoji-smile me-2"></i>
+                                <span>@entry.PrimaryMood</span>
+                            </div>
+                }
+                @if (!string.IsNullOrEmpty(entry.Category))
+                {
+                            <div class="category-display">
+                                <i class="bi bi-folder me-2"></i>
+                                <span>@entry.Category</span>
+                            </div>
+                }
+                    <div class="entry-meta-item">
+                        <i class="bi bi-pencil"></i>
+                        <span>@entry.WordCount words</span>
+                    </div>
+                </div>
+
+            @if (!string.IsNullOrEmpty(entry.Tags))
+            {
+                        <div class="tags-section">
+                            <h5>
+                                <i class="bi bi-tags me-2"></i>Tags
+                            </h5>
+                            <div class="d-flex flex-wrap gap-2">
+                        @foreach (var tag in entry.TagList)
+                        {
+                                        <span class="tag-badge">
+                                            <i class="bi bi-tag-fill me-1"></i>@tag
+                                        </span>
+                        }
+                            </div>
+                        </div>
+            }
+            </div>
+        </div>
+
+        <!-- Sticky Action Bar -->
+        <div class="action-bar ">
+            <div class="container">
+                <div class="action-buttons">
+                    <button class="btn btn-back" @onclick="GoBack">
+                        <i class="bi bi-arrow-left"></i>
+                        Back
+                    </button>
+
+                @if (IsToday())
+                {
+                            <button class="btn btn-edit" @onclick="EditEntry">
+                                <i class="bi bi-pencil-square"></i>
+                                Edit Entry
+                            </button>
+                }
+                else
+                {
+                            <div class="edit-restriction-notice">
+                                <i class="bi bi-lock"></i>
+                                <span>Past entries cannot be edited</span>
+                            </div>
+                }
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Section -->
+        <div class="container pb-5">
+            <div class="content-card">
+                <div class="journal-content">
+                @((MarkupString)entry.Content)
+                </div>
+            </div>
+        </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private JournalEntry? entry;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (UserService.CurrentUser == null)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        entry = await Db.JournalEntries
+            .FirstOrDefaultAsync(e =>
+                e.Id == Id &&
+                e.UserId == UserService.CurrentUser.Id);
+
+        if (entry == null)
+        {
+            Navigation.NavigateTo("/timeline");
+        }
+    }
+
+    private bool IsToday()
+    {
+        return entry != null && entry.EntryDate.Date == DateTime.Today;
+    }
+
+    private void EditEntry()
+    {
+        if (entry != null && IsToday())
+        {
+            Navigation.NavigateTo($"/journal/edit/{entry.Id}");
+        }
+    }
+
+    private async Task GoBack()
+    {
+        await JS.InvokeVoidAsync("history.back");
+    }
+}

@@ -1,198 +1,539 @@
 ﻿@page "/journal"
+@page "/journal/edit/{Id:int}"
+
 @inject IJSRuntime JS
+@inject JournalDbContext Db
 @inject JournalService JournalService
 @inject UserService UserService
+@inject NavigationManager Navigation
 @using JournalApp.Services
 @using JournalApp.Models
 
 <AuthGuard>
     <PageTitle>Journal - My Journal</PageTitle>
 
-    <h3>Today's Journal</h3>
-    <p class="text-muted">Welcome, @UserService.CurrentUser?.FullName!</p>
-
-    @if (isLoading)
-    {
-        <div class="text-center">
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
+    <div class="journal-page">
+        <div class="journal-header-section">
+            <div class="container">
+                <h3>Today's Journal</h3>
+                <p class="text-white-50">Welcome, @UserService.CurrentUser?.FullName!</p>
             </div>
         </div>
-    }
-    else
-    {
-        <div class="journal-container">
-            <div class="journal-header">
-                <div class="date-display">
-                    <h4>@currentDate.ToString("dddd, MMMM dd, yyyy")</h4>
-                    @if (currentEntry != null)
-                    {
-                        <small class="text-muted">
-                            Last updated: @currentEntry.UpdatedAt.ToString("h:mm tt")
-                        </small>
-                    }
-                </div>
 
-                <div class="journal-actions">
-                    <button class="btn btn-outline-primary" @onclick="ToggleFormatting">
-                        @(useMarkdown ? "Switch to Rich Text" : "Switch to Markdown")
-                    </button>
-                    <button class="btn btn-success" @onclick="SaveEntry" disabled="@isSaving">
-                        @if (isSaving)
-                        {
-                            <span class="spinner-border spinner-border-sm me-2"></span>
-                        }
-                        Save Entry
-                    </button>
-                    @if (currentEntry != null)
-                    {
-                        <button class="btn btn-outline-danger" @onclick="DeleteEntry">
-                            Delete
-                        </button>
-                    }
-                </div>
-            </div>
-
-            <!-- Mood Selection -->
-            <div class="mood-section mb-4">
-                <h5>How are you feeling today?</h5>
-
-                <div class="mood-categories">
-                    <!-- Primary Mood -->
-                    <div class="mood-category">
-                        <label class="form-label">Primary Mood (Required) <span class="text-danger">*</span></label>
-                        <select class="form-select" @bind="primaryMood">
-                            <option value="">Select a mood...</option>
-                            @foreach (var category in moodCategories)
-                            {
-                                <optgroup label="@category.Key">
-                                    @foreach (var mood in category.Value)
-                                    {
-                                        <option value="@mood">@mood</option>
-                                    }
-                                </optgroup>
-                            }
-                        </select>
-                    </div>
-
-                    <!-- Secondary Moods -->
-                    <div class="mood-category">
-                        <label class="form-label">Secondary Moods (Optional, up to 2)</label>
-                        <div class="secondary-moods">
-                            @for (int i = 0; i < secondaryMoods.Count; i++)
-                            {
-                                var index = i;
-                                <div class="secondary-mood-item">
-                                    <select class="form-select" @bind="secondaryMoods[index]">
-                                        <option value="">Select secondary mood...</option>
-                                        @foreach (var category in moodCategories)
-                                        {
-                                            <optgroup label="@category.Key">
-                                                @foreach (var mood in category.Value)
-                                                {
-                                                    <option value="@mood">@mood</option>
-                                                }
-                                            </optgroup>
-                                        }
-                                    </select>
-                                    @if (index > 0)
-                                    {
-                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveSecondaryMood(index)">
-                                            <span class="oi oi-trash"></span>
-                                        </button>
-                                    }
-                                </div>
-                            }
-                            @if (secondaryMoods.Count < 2)
-                            {
-                                <button class="btn btn-outline-secondary btn-sm" @onclick="AddSecondaryMood">
-                                    + Add Secondary Mood
-                                </button>
-                            }
+        @if (isLoading)
+        {
+                <div class="container">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
                         </div>
+                        <p class="mt-3 text-muted">Loading your journal...</p>
                     </div>
                 </div>
-            </div>
-
-            <!-- Category and Tags -->
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <label class="form-label">Category</label>
-                    <select class="form-select" @bind="selectedCategory">
-                        <option value="">Select category...</option>
-                        <option value="Personal">Personal</option>
-                        <option value="Work">Work</option>
-                        <option value="Health">Health</option>
-                        <option value="Travel">Travel</option>
-                        <option value="Reflection">Reflection</option>
-                    </select>
-                </div>
-
-                <div class="col-md-6">
-                    <label class="form-label">Tags</label>
-                    <div class="tags-input">
-                        <input type="text" class="form-control" placeholder="Add tags..."
-                               @bind="newTag" @bind:event="oninput" @onkeyup="HandleTagInput" />
-                        @if (showTagSuggestions && filteredTags.Any())
-                        {
-                            <div class="tag-suggestions">
-                                @foreach (var tag in filteredTags)
-                                {
-                                    <div class="tag-suggestion" @onclick="() => AddTag(tag)">
-                                        @tag
+        }
+        else
+        {
+                <div class="container pb-5">
+                    <div class="journal-container">
+                        <div class="journal-header-card card border-0 shadow-sm mb-4">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                                    <div class="date-display">
+                                        <h4 class="mb-1">@currentDate.ToString("dddd, MMMM dd, yyyy")</h4>
+                                    @if (currentEntry != null)
+                                    {
+                                                <small class="text-muted">
+                                                    Last updated: @currentEntry.UpdatedAt.ToString("h:mm tt")
+                                                </small>
+                                    }
                                     </div>
-                                }
+
+                                    <div class="journal-actions d-flex gap-2">
+                                        <button class="btn btn-success" @onclick="SaveEntry" disabled="@isSaving">
+                                        @if (isSaving)
+                                        {
+                                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                        }
+                                            <i class="bi bi-save me-2"></i>Save Entry
+                                        </button>
+                                    @if (currentEntry != null)
+                                    {
+                                                <button class="btn btn-outline-danger" @onclick="DeleteEntry">
+                                                    <i class="bi bi-trash me-2"></i>Delete
+                                                </button>
+                                    }
+                                    </div>
+                                </div>
                             </div>
-                        }
+                        </div>
+
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-body p-4">
+                                <input class="form-control form-control-lg journal-title-input mb-3" 
+                                       placeholder="Give your entry a title..." 
+                                       @bind="title" 
+                                       maxlength="150" />
+
+                                <!-- Mood Selection -->
+                                <div class="mood-section mb-4">
+                                    <h5 class="mb-3">
+                                        <i class="bi bi-emoji-smile me-2"></i>How are you feeling today?
+                                    </h5>
+
+                                    <div class="row g-3">
+                                        <!-- Primary Mood -->
+                                        <div class="col-md-6">
+                                            <label class="form-label">Primary Mood <span class="text-danger">*</span></label>
+                                            <select class="form-select" @bind="primaryMood">
+                                                <option value="">Select a mood...</option>
+                                            @foreach (var category in moodCategories)
+                                            {
+                                                        <optgroup label="@category.Key">
+                                                    @foreach (var mood in category.Value)
+                                                    {
+                                                                    <option value="@mood">@mood</option>
+                                                    }
+                                                        </optgroup>
+                                            }
+                                            </select>
+                                        </div>
+
+                                        <!-- Secondary Moods -->
+                                        <div class="col-md-6">
+                                            <label class="form-label">Secondary Moods (Optional, up to 2)</label>
+                                        @for (int i = 0; i < secondaryMoods.Count; i++)
+                                        {
+                                            var index = i;
+                                                    <div class="d-flex gap-2 mb-2">
+                                                        <select class="form-select" @bind="secondaryMoods[index]">
+                                                            <option value="">Select secondary mood...</option>
+                                                    @foreach (var category in moodCategories)
+                                                    {
+                                                                    <optgroup label="@category.Key">
+                                                            @foreach (var mood in category.Value)
+                                                            {
+                                                                                <option value="@mood">@mood</option>
+                                                            }
+                                                                    </optgroup>
+                                                    }
+                                                        </select>
+                                                @if (index > 0)
+                                                {
+                                                                <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveSecondaryMood(index)">
+                                                                    <i class="bi bi-trash"></i>
+                                                                </button>
+                                                }
+                                                    </div>
+                                        }
+                                        @if (secondaryMoods.Count < 2)
+                                        {
+                                                    <button class="btn btn-outline-secondary btn-sm" @onclick="AddSecondaryMood">
+                                                        <i class="bi bi-plus-circle me-1"></i>Add Secondary Mood
+                                                    </button>
+                                        }
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Category and Tags -->
+                                <div class="row mb-4">
+                                    <div class="col-md-6">
+                                        <label class="form-label">
+                                            <i class="bi bi-folder me-2"></i>Category
+                                        </label>
+                                        <select class="form-select" @bind="selectedCategory">
+                                            <option value="">Select category...</option>
+                                            <option value="Personal">Personal</option>
+                                            <option value="Work">Work</option>
+                                            <option value="Health">Health</option>
+                                            <option value="Travel">Travel</option>
+                                            <option value="Reflection">Reflection</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label">
+                                            <i class="bi bi-tags me-2"></i>Tags
+                                        </label>
+                                        <div class="tags-input-container">
+                                            <input type="text" 
+                                                   class="form-control" 
+                                                   placeholder="Add tags..."
+                                                   @bind="newTag" 
+                                                   @bind:event="oninput" 
+                                                   @onkeyup="HandleTagInput" />
+                                        @if (showTagSuggestions && filteredTags.Any())
+                                        {
+                                                    <div class="tag-suggestions">
+                                                @foreach (var tag in filteredTags)
+                                                {
+                                                                <div class="tag-suggestion" @onclick="() => AddTag(tag)">
+                                                        @tag
+                                                                </div>
+                                                }
+                                                    </div>
+                                        }
+                                        </div>
+
+                                        <div class="selected-tags mt-2">
+                                        @foreach (var tag in selectedTags)
+                                        {
+                                                    <span class="selected-tag">
+                                                        <i class="bi bi-tag-fill me-1"></i>@tag
+                                                        <button class="tag-remove" @onclick="() => RemoveTag(tag)">×</button>
+                                                    </span>
+                                        }
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Editor Section -->
+                                <div class="editor-section">
+                                    <label class="form-label mb-3">
+                                        <i class="bi bi-pencil-square me-2"></i>Your Journal Entry
+                                    </label>
+                                    <div class="rich-text-editor">
+                                        <div id="quillEditor" style="height: 300px;"></div>
+                                    </div>
+                                </div>
+
+                                <div class="word-count-badge mt-3">
+                                    <i class="bi bi-pencil me-2"></i>
+                                    Word Count: <span class="badge bg-primary ms-1">@wordCount</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                                <div class="alert alert-danger" role="alert">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>@errorMessage
+                                </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(successMessage))
+                    {
+                                <div class="alert alert-success" role="alert">
+                                    <i class="bi bi-check-circle me-2"></i>@successMessage
+                                </div>
+                    }
                     </div>
-
-                    <div class="selected-tags mt-2">
-                        @foreach (var tag in selectedTags)
-                        {
-                            <span class="selected-tag">
-                                @tag
-                                <button class="tag-remove" @onclick="() => RemoveTag(tag)">×</button>
-                            </span>
-                        }
-                    </div>
                 </div>
-            </div>
-
-            <!-- Editor Section -->
-            <div class="editor-section">
-                <div class="rich-text-editor">
-                    <div id="quillEditor" style="height: 300px;"></div>
-                </div>
-            </div>
-
-            <div class="word-count mt-3">
-                Word Count: <span class="badge bg-secondary">@wordCount</span>
-            </div>
-
-            @if (!string.IsNullOrEmpty(errorMessage))
-            {
-                <div class="alert alert-danger mt-3" role="alert">
-                    @errorMessage
-                </div>
-            }
-
-            @if (!string.IsNullOrEmpty(successMessage))
-            {
-                <div class="alert alert-success mt-3" role="alert">
-                    @successMessage
-                </div>
-            }
-        </div>
-    }
+        }
+    </div>
 </AuthGuard>
+
+<style>
+    /* Page Background */
+    .journal-page {
+        background-color: var(--background-color);
+        min-height: 100vh;
+    }
+
+    /* Header Section */
+    .journal-header-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        border-radius: 0 0 20px 20px;
+        color: white;
+    }
+
+    .journal-header-section h3 {
+        color: white;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Cards */
+    .card,
+    .journal-header-card {
+        background-color: var(--card-background) !important;
+        border-color: var(--border-color) !important;
+        color: var(--text-primary) !important;
+    }
+
+    .card-body h4,
+    .card-body h5 {
+        color: var(--text-primary) !important;
+    }
+
+    /* Date Display */
+    .date-display h4 {
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+
+    /* Journal Title Input */
+    .journal-title-input {
+        background-color: var(--surface-color);
+        border-color: var(--border-color);
+        color: var(--text-primary);
+        font-size: 1.25rem;
+        font-weight: 500;
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+    }
+
+    .journal-title-input:focus {
+        background-color: var(--card-background);
+        border-color: #667eea;
+        color: var(--text-primary);
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+
+    .journal-title-input::placeholder {
+        color: var(--text-muted);
+    }
+
+    /* Mood Section */
+    .mood-section {
+        padding: 1.5rem;
+        background-color: var(--surface-color);
+        border-radius: 15px;
+    }
+
+    .mood-section h5 {
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+
+    /* Form Controls */
+    .form-select,
+    .form-control {
+        background-color: var(--card-background);
+        border-color: var(--border-color);
+        color: var(--text-primary);
+        border-radius: 8px;
+    }
+
+    .form-select:focus,
+    .form-control:focus {
+        background-color: var(--card-background);
+        border-color: #667eea;
+        color: var(--text-primary);
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+
+    .form-select option {
+        background-color: var(--card-background);
+        color: var(--text-primary);
+    }
+
+    .form-label {
+        color: var(--text-primary);
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Tags */
+    .tags-input-container {
+        position: relative;
+    }
+
+    .tag-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: var(--card-background);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        box-shadow: var(--shadow-md);
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        margin-top: 4px;
+    }
+
+    .tag-suggestion {
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        color: var(--text-primary);
+        transition: background-color 0.2s;
+    }
+
+    .tag-suggestion:hover {
+        background-color: var(--hover-background);
+    }
+
+    .selected-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .selected-tag {
+        display: inline-flex;
+        align-items: center;
+        background-color: var(--surface-color);
+        color: var(--text-primary);
+        padding: 0.4rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .tag-remove {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        font-size: 1.2rem;
+        margin-left: 0.5rem;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+    }
+
+    .tag-remove:hover {
+        color: #dc3545;
+    }
+
+    /* Editor Section */
+    .editor-section {
+        margin-top: 1.5rem;
+    }
+
+    .rich-text-editor {
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    /* Quill Editor Dark Theme */
+    [data-theme="dark"] .ql-toolbar {
+        background-color: var(--surface-color);
+        border-color: var(--border-color) !important;
+    }
+
+    [data-theme="dark"] .ql-container {
+        background-color: var(--card-background);
+        border-color: var(--border-color) !important;
+        color: var(--text-primary);
+    }
+
+    [data-theme="dark"] .ql-editor {
+        color: var(--text-primary);
+    }
+
+    [data-theme="dark"] .ql-editor.ql-blank::before {
+        color: var(--text-muted);
+    }
+
+    [data-theme="dark"] .ql-stroke {
+        stroke: var(--text-primary) !important;
+    }
+
+    [data-theme="dark"] .ql-fill {
+        fill: var(--text-primary) !important;
+    }
+
+    [data-theme="dark"] .ql-picker-label {
+        color: var(--text-primary) !important;
+    }
+
+    [data-theme="dark"] .ql-picker-options {
+        background-color: var(--card-background);
+        border-color: var(--border-color);
+    }
+
+    [data-theme="dark"] .ql-picker-item {
+        color: var(--text-primary) !important;
+    }
+
+    [data-theme="dark"] .ql-picker-item:hover {
+        background-color: var(--hover-background);
+    }
+
+    /* Word Count Badge */
+    .word-count-badge {
+        display: flex;
+        align-items: center;
+        color: var(--text-muted);
+        font-size: 0.95rem;
+    }
+
+    /* Buttons */
+    .btn {
+        border-radius: 8px;
+        padding: 0.6rem 1.2rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .btn-success {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border: none;
+    }
+
+    .btn-success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+    }
+
+    .btn-outline-danger:hover {
+        transform: translateY(-2px);
+    }
+
+    .btn-outline-secondary {
+        border-color: var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .btn-outline-secondary:hover {
+        background-color: var(--hover-background);
+        border-color: var(--border-color);
+        color: var(--text-primary);
+    }
+
+    /* Alerts */
+    .alert {
+        border-radius: 10px;
+        border: none;
+    }
+
+    [data-theme="dark"] .alert-danger {
+        background-color: rgba(220, 53, 69, 0.2);
+        color: #ff6b6b;
+    }
+
+    [data-theme="dark"] .alert-success {
+        background-color: rgba(40, 167, 69, 0.2);
+        color: #51cf66;
+    }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .journal-header-section {
+            padding: 1.5rem 0;
+        }
+
+        .journal-actions {
+            width: 100%;
+        }
+
+        .journal-actions .btn {
+            flex: 1;
+        }
+
+        .date-display {
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+    }
+</style>
 
 @code {
     private DateTime currentDate = DateTime.Today;
+    [Parameter]
+    public int? Id { get; set; }
+
     private JournalEntry? currentEntry = null;
     private bool isLoading = true;
     private bool isSaving = false;
 
     // Editor content
+    private string title = "";
     private string journalContent = "";
 
     // Mood & category state
@@ -223,9 +564,56 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadTodayEntry();
-    }
+        if (UserService.CurrentUser == null)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
 
+        try
+        {
+            isLoading = true;
+
+            if (Id.HasValue)
+            {
+                currentEntry = await Db.JournalEntries
+                    .FirstOrDefaultAsync(e =>
+                        e.UserId == UserService.CurrentUser.Id &&
+                        e.Id == Id.Value);
+
+                if (currentEntry == null)
+                {
+                    Navigation.NavigateTo("/timeline");
+                    return;
+                }
+
+                LoadEntryFields(currentEntry);
+            }
+            else
+            {
+                currentEntry = await JournalService.GetEntryByDateAsync(DateTime.Today);
+
+                if (currentEntry == null)
+                {
+                    currentEntry = new JournalEntry
+                        {
+                            EntryDate = DateTime.Today,
+                            UserId = UserService.CurrentUser.Id
+                        };
+                }
+
+                LoadEntryFields(currentEntry);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load journal entry: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -240,7 +628,6 @@
         {
             quill = await JS.InvokeAsync<IJSObjectReference>("initQuill", "#quillEditor");
 
-            // Load existing content if available
             if (!string.IsNullOrEmpty(journalContent))
             {
                 await JS.InvokeVoidAsync("setQuillContent", quill, journalContent);
@@ -252,42 +639,24 @@
         }
     }
 
-    private async Task LoadTodayEntry()
+    private void LoadEntryFields(JournalEntry entry)
     {
-        try
-        {
-            isLoading = true;
-            currentEntry = await JournalService.GetEntryByDateAsync(currentDate);
+        title = entry.Title;
+        journalContent = entry.Content;
+        primaryMood = entry.PrimaryMood;
+        selectedCategory = entry.Category ?? "";
+        selectedTags = entry.TagList;
+        useMarkdown = entry.IsMarkdown;
+        wordCount = entry.WordCount;
 
-            if (currentEntry != null)
-            {
-                // Load existing entry
-                journalContent = currentEntry.Content;
-                primaryMood = currentEntry.PrimaryMood;
-                selectedCategory = currentEntry.Category ?? "";
-                selectedTags = currentEntry.TagList;
-                useMarkdown = currentEntry.IsMarkdown;
-                wordCount = currentEntry.WordCount;
+        secondaryMoods.Clear();
+        if (!string.IsNullOrEmpty(entry.SecondaryMood1))
+            secondaryMoods.Add(entry.SecondaryMood1);
+        if (!string.IsNullOrEmpty(entry.SecondaryMood2))
+            secondaryMoods.Add(entry.SecondaryMood2);
 
-                // Load secondary moods
-                secondaryMoods.Clear();
-                if (!string.IsNullOrEmpty(currentEntry.SecondaryMood1))
-                    secondaryMoods.Add(currentEntry.SecondaryMood1);
-                if (!string.IsNullOrEmpty(currentEntry.SecondaryMood2))
-                    secondaryMoods.Add(currentEntry.SecondaryMood2);
-
-                if (secondaryMoods.Count == 0)
-                    secondaryMoods.Add("");
-            }
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Failed to load entry: {ex.Message}";
-        }
-        finally
-        {
-            isLoading = false;
-        }
+        if (secondaryMoods.Count == 0)
+            secondaryMoods.Add("");
     }
 
     private async Task SaveEntry()
@@ -297,7 +666,6 @@
             errorMessage = null;
             successMessage = null;
 
-            // Validation
             if (string.IsNullOrWhiteSpace(primaryMood))
             {
                 errorMessage = "Please select a primary mood.";
@@ -306,12 +674,9 @@
 
             isSaving = true;
 
-            // Get content from Quill editor
             if (quill != null)
             {
                 journalContent = await JS.InvokeAsync<string>("getQuillHtml", quill);
-
-                // Calculate word count
                 var plainText = await JS.InvokeAsync<string>("getQuillText", quill);
                 wordCount = plainText.Split(new[] { ' ', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
             }
@@ -322,9 +687,9 @@
                 return;
             }
 
-            // Create or update entry
             var entry = currentEntry ?? new JournalEntry();
             entry.EntryDate = currentDate;
+            entry.Title = title;
             entry.Content = journalContent;
             entry.PrimaryMood = primaryMood;
             entry.MoodCategory = MoodData.GetMoodCategory(primaryMood);
@@ -333,7 +698,6 @@
             entry.WordCount = wordCount;
             entry.IsMarkdown = useMarkdown;
 
-            // Secondary moods
             var validSecondaryMoods = secondaryMoods.Where(m => !string.IsNullOrWhiteSpace(m)).ToList();
             entry.SecondaryMood1 = validSecondaryMoods.ElementAtOrDefault(0);
             entry.SecondaryMood1Category = entry.SecondaryMood1 != null
@@ -347,7 +711,6 @@
             currentEntry = await JournalService.SaveEntryAsync(entry);
             successMessage = "Journal entry saved successfully!";
 
-            // Clear success message after 3 seconds
             _ = Task.Run(async () =>
             {
                 await Task.Delay(3000);
@@ -377,8 +740,8 @@
             await JournalService.DeleteEntryAsync(currentEntry.Id);
             successMessage = "Entry deleted successfully.";
 
-            // Reset form
             currentEntry = null;
+            title = "";
             journalContent = "";
             primaryMood = "";
             secondaryMoods = new() { "" };
@@ -397,7 +760,6 @@
         }
     }
 
-    // Mood methods
     private void AddSecondaryMood()
     {
         if (secondaryMoods.Count < 2)
@@ -410,7 +772,6 @@
             secondaryMoods.RemoveAt(index);
     }
 
-    // Tag methods
     private void HandleTagInput(KeyboardEventArgs e)
     {
         if (!string.IsNullOrWhiteSpace(newTag))
